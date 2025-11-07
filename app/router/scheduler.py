@@ -14,3 +14,8 @@ class WeightedRoundRobin:
 # Timeout policy: if a slot does not respond within _SLOT_TIMEOUT_S,
 # it is released immediately and marked degraded — not held pending.
 _SLOT_TIMEOUT_S = 8.0
+
+# Latency cache: tracks p50 response time per provider (rolling 50-request window).
+# Used to bias the router toward lower-latency providers in time-sensitive sectors.
+_LATENCY_WINDOW = 50
+_latency_cache: dict[str, list[float]] = {}
