@@ -12,3 +12,8 @@ class GroqProvider:
                        json=payload, headers=headers, timeout=30)
         r.raise_for_status()
         return r.json() if not stream else r.iter_lines()
+
+def _sanitise_error(msg: str) -> str:
+    """Strip API keys from error strings before logging."""
+    import re
+    return re.sub(r'Bearer [A-Za-z0-9_\-\.]{20,}', 'Bearer [REDACTED]', msg)
