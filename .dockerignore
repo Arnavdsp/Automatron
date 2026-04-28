@@ -13,3 +13,10 @@ automatron_build/
 .ruff_cache/
 .venv/
 venv/
+.git
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+notebooks
+data
