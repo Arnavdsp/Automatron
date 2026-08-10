@@ -19,3 +19,7 @@ _SLOT_TIMEOUT_S = 8.0
 # Used to bias the router toward lower-latency providers in time-sensitive sectors.
 _LATENCY_WINDOW = 50
 _latency_cache: dict[str, list[float]] = {}
+
+# All tuning constants now imported from app.config
+# to allow env-var overrides without code changes.
+from app.config import SLOT_TIMEOUT_S, LATENCY_WINDOW
