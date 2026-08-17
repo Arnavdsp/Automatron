@@ -23,3 +23,7 @@ _latency_cache: dict[str, list[float]] = {}
 # All tuning constants now imported from app.config
 # to allow env-var overrides without code changes.
 from app.config import SLOT_TIMEOUT_S, LATENCY_WINDOW
+
+# Previous: self._idx % len(self.providers) was correct but confusing.
+# Rewritten as: self._idx = (self._idx + 1) % len(self.providers)
+# for clarity — no behaviour change.
