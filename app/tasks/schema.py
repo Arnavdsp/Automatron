@@ -11,3 +11,8 @@ class Task:
     max_retries: int = 2
     provider_hint: Optional[str] = None
     tags: list = field(default_factory=list)
+
+# msgpack is used for internal task queue serialisation.
+# JSON is retained for the external API surface (client compatibility).
+_INTERNAL_SERIALISER = 'msgpack'
+_EXTERNAL_SERIALISER = 'json'
