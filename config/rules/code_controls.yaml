@@ -1,0 +1,157 @@
+# Static review rules for trading code, and the control themes they map onto.
+# These are code-reading heuristics, not a security audit and not a substitute
+# for review by an engineer. Uploaded files are parsed, never imported or run.
+
+disclaimer: >-
+  Static checks only. A clean result means these specific patterns were not found,
+  not that the strategy is safe to deploy. Logic errors, model risk, and anything
+  depending on runtime state are outside what this can see.
+
+# Control themes findings are grouped under, so a reviewer reads a handful of
+# themes rather than ten unrelated rule ids.
+control_themes:
+  pre_trade_controls:
+    name: Pre-trade controls
+    intent: >-
+      Size and price limits are checked in code before an order call, so a bad
+      signal cannot send an unbounded order.
+  kill_switch:
+    name: Kill switch and circuit breakers
+    intent: >-
+      There is a way to halt trading without redeploying, and a loss or error
+      threshold that trips it.
+  secrets_handling:
+    name: Credential handling
+    intent: Credentials come from the environment or a secret store, never from source.
+  lookahead_bias:
+    name: Look-ahead and data leakage
+    intent: >-
+      Signals use only information available at the time they would have traded.
+  observability:
+    name: Logging and record keeping
+    intent: Order intent and outcome are logged well enough to reconstruct a session.
+  error_handling:
+    name: Error handling
+    intent: Failures near order paths surface rather than being swallowed.
+  code_safety:
+    name: Dynamic execution
+    intent: The process does not build and run code from strings or external input.
+  testing_readiness:
+    name: Testing and dry run
+    intent: There is a paper or dry-run path, and tests exist to exercise it.
+  determinism:
+    name: Backtest determinism
+    intent: >-
+      Backtest logic reads its clock from the data, so a rerun gives the same
+      answer tomorrow as it does today.
+
+rules:
+  QC-001:
+    title: Credential literal in source
+    theme: secrets_handling
+    severity: high
+    blocking: [paper, live]
+    detail: >-
+      A value that looks like an API key, token, or password is written into the
+      file. Anything committed to source control must be treated as disclosed.
+    remediation: Read the value from an environment variable or secret manager.
+
+  QC-002:
+    title: Negative shift or future index in signal code
+    theme: lookahead_bias
+    severity: high
+    blocking: [paper, live]
+    detail: >-
+      A negative shift or a forward index pulls a future observation into a
+      signal. A backtest built this way reports returns nobody could have earned.
+    remediation: >-
+      Shift features forward, not back, and compare a rerun against a version
+      that trades on the following bar.
+
+  QC-003:
+    title: No position or notional limit before an order call
+    theme: pre_trade_controls
+    severity: high
+    blocking: [live]
+    detail: >-
+      No maximum size constant or size check was found on the path to an order
+      call, so the size sent depends entirely on the signal being sane.
+    remediation: Add an explicit ceiling and check it immediately before sending.
+
+  QC-004:
+    title: No kill switch or circuit breaker
+    theme: kill_switch
+    severity: high
+    blocking: [live]
+    detail: >-
+      Nothing was found that halts trading on a loss threshold, error rate, or
+      operator command.
+    remediation: >-
+      Add a flag or threshold the process checks each loop, and a way to set it
+      without a redeploy.
+
+  QC-005:
+    title: Order call in an unbounded loop without pacing
+    theme: pre_trade_controls
+    severity: high
+    blocking: [live]
+    detail: >-
+      An order call sits inside a loop with no exit condition and no sleep or
+      rate limit, so one stuck condition can submit repeatedly.
+    remediation: Add a pacing call and an exit condition, and cap orders per interval.
+
+  QC-006:
+    title: No logging around order calls
+    theme: observability
+    severity: medium
+    blocking: []
+    detail: >-
+      Order calls were found with no logging nearby, which leaves nothing to
+      reconstruct what was sent and why.
+    remediation: Log the intent before sending and the outcome after.
+
+  QC-007:
+    title: Bare except near an order path
+    theme: error_handling
+    severity: medium
+    blocking: [live]
+    detail: >-
+      A bare except swallows every error, including a rejected or partially
+      filled order, and leaves the process believing it succeeded.
+    remediation: Catch the specific exceptions you can handle and let the rest surface.
+
+  QC-008:
+    title: Use of eval or exec
+    theme: code_safety
+    severity: high
+    blocking: [paper, live]
+    detail: >-
+      Building and running code from a string makes behaviour depend on data and
+      is not reviewable.
+    remediation: Replace with an explicit mapping or a parsed configuration.
+
+  QC-009:
+    title: No dry-run path or tests
+    theme: testing_readiness
+    severity: medium
+    blocking: []
+    detail: >-
+      No paper or dry-run flag and no test functions were found, so there is no
+      way to exercise the strategy without sending real orders.
+    remediation: Add a dry-run mode that logs what it would have sent.
+
+  QC-010:
+    title: Wall-clock time in backtest logic
+    theme: determinism
+    severity: medium
+    blocking: []
+    detail: >-
+      Backtest logic reads the current time, so results shift with the day it is
+      run and cannot be reproduced.
+    remediation: Take the timestamp from the data being replayed.
+
+# Level thresholds for the workflow, evaluated against the deployment target.
+levels:
+  blocking_issues: BLOCKING_ISSUES
+  issues_to_review: ISSUES_TO_REVIEW
+  none_found: NO_ISSUES_FOUND

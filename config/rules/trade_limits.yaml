@@ -1,0 +1,102 @@
+# Trading limits for the trade approval gate. Illustrative values for a fictional
+# firm: they are policy, not regulation, and a firm using this would replace the
+# whole file. Every limit that fires is reported with the threshold it compared
+# against, so a reviewer can see why the gate stopped.
+
+# Static reference rates, stated as of a fixed date so a brief never implies a
+# live quote. Notional is reported in USD with this date attached.
+fx_rates_usd:
+  as_of: "2026-01-02"
+  source_note: >-
+    Fixed reference rates held in configuration. Not a market feed and not a
+    tradable quote; used only to express notional in a single currency.
+  rates:
+    USD: 1.0
+    EUR: 1.0850
+    GBP: 1.2700
+    JPY: 0.00670
+    CHF: 1.1400
+    CAD: 0.7350
+    AUD: 0.6600
+    INR: 0.01190
+    HKD: 0.1280
+    SGD: 0.7450
+
+# Notional at or above which a human must sign off regardless of anything else.
+approval_threshold_usd: 100000
+
+# Client segments treated as high risk. A ticket from one of these always goes
+# to a human, whatever the size.
+high_risk_segments: [HIGH_RISK, PEP, NEW_UNVERIFIED]
+
+# Currencies the gate will price. Anything else is a validation failure rather
+# than an assumed rate.
+known_currencies: [USD, EUR, GBP, JPY, CHF, CAD, AUD, INR, HKD, SGD]
+
+# Per-asset-class ceilings on a single ticket.
+asset_class_limits:
+  equity:
+    max_notional_usd: 2500000
+    max_adv_participation_pct: 10.0
+  etf:
+    max_notional_usd: 5000000
+    max_adv_participation_pct: 15.0
+  future:
+    max_notional_usd: 4000000
+    max_adv_participation_pct: 12.0
+  fx:
+    max_notional_usd: 10000000
+    max_adv_participation_pct: 20.0
+  option:
+    max_notional_usd: 1000000
+    max_adv_participation_pct: 5.0
+  crypto:
+    max_notional_usd: 250000
+    max_adv_participation_pct: 3.0
+
+# Per-instrument overrides. These win over the asset-class ceiling when both apply.
+instrument_limits:
+  AAPL: {max_notional_usd: 2000000}
+  MSFT: {max_notional_usd: 2000000}
+  NVDA: {max_notional_usd: 1500000}
+  SPY:  {max_notional_usd: 5000000}
+  TSLA: {max_notional_usd: 750000}
+
+# Per-strategy ceilings on one ticket and on the strategy's share of the book.
+strategy_limits:
+  momentum_us_lc:
+    max_ticket_notional_usd: 1500000
+    max_book_share_pct: 35.0
+  mean_reversion_intraday:
+    max_ticket_notional_usd: 500000
+    max_book_share_pct: 20.0
+  vol_carry:
+    max_ticket_notional_usd: 400000
+    max_book_share_pct: 15.0
+  discretionary:
+    max_ticket_notional_usd: 250000
+    max_book_share_pct: 10.0
+
+# Per-client-segment ceilings on one ticket.
+client_segment_limits:
+  INSTITUTIONAL: {max_ticket_notional_usd: 5000000}
+  PROFESSIONAL:  {max_ticket_notional_usd: 1000000}
+  RETAIL:        {max_ticket_notional_usd: 50000}
+  HIGH_RISK:     {max_ticket_notional_usd: 25000}
+  PEP:           {max_ticket_notional_usd: 25000}
+  NEW_UNVERIFIED: {max_ticket_notional_usd: 10000}
+
+# Concentration against the sample book in data/samples/quant/book.csv.
+concentration:
+  max_single_name_pct: 12.0
+  max_sector_pct: 30.0
+  warn_single_name_pct: 8.0
+
+# Historical VaR settings for the pre-trade estimate.
+var:
+  confidence: 0.99
+  horizon_days: 1
+  lookback_days: 500
+  min_observations: 120
+  # A one-day 99% VaR above this share of notional is called out in the brief.
+  warn_share_of_notional_pct: 5.0

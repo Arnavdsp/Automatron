@@ -1,0 +1,15 @@
+{
+  "ticket_id": "TKT-2026-0117",
+  "instrument": "MSFT",
+  "asset_class": "equity",
+  "side": "BUY",
+  "quantity": 120,
+  "limit_price": 402.5,
+  "currency": "USD",
+  "client_id": "C-1044",
+  "client_segment": "PROFESSIONAL",
+  "strategy_id": "momentum_us_lc",
+  "rationale": "Adding to an existing position after a scheduled rebalance.",
+  "trader": "sample.trader",
+  "note": "Synthetic data generated for this project from a fixed seed. Not market data and not a price history of any real security."
+}

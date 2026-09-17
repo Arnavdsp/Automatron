@@ -269,3 +269,41 @@ class TestBundledKnowledge:
     def test_knowledge_stays_small(self):
         total = sum(path.stat().st_size for path in self.files())
         assert total < 3_000_000, "knowledge base should stay under 3 MB of text"
+
+
+class TestCloudFallback:
+    """A free Space loses its disk on restart, so the cloud cluster matters; an
+    unreachable one must degrade rather than take the app down."""
+
+    def test_an_unreachable_cluster_falls_back_to_local_storage(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("RUNTIME_DIR", str(tmp_path))
+        monkeypatch.setenv("QDRANT_URL", "https://nonexistent-cluster.invalid:6333")
+        monkeypatch.setenv("QDRANT_API_KEY", "not-a-real-key")
+        core.reset_settings_cache()
+        core.reset_rag_cache()
+        try:
+            assert core.get_settings().qdrant_url, "the test needs a cloud url configured"
+            client = core.get_qdrant()
+            assert core.is_local_qdrant(client), "an unreachable cluster should fall back"
+        finally:
+            try:
+                core.get_qdrant().close()
+            except Exception:
+                pass
+            core.reset_rag_cache()
+            core.reset_settings_cache()
+
+    def test_no_cloud_url_uses_local_storage_without_trying(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("RUNTIME_DIR", str(tmp_path))
+        monkeypatch.delenv("QDRANT_URL", raising=False)
+        core.reset_settings_cache()
+        core.reset_rag_cache()
+        try:
+            assert core.is_local_qdrant(core.get_qdrant())
+        finally:
+            try:
+                core.get_qdrant().close()
+            except Exception:
+                pass
+            core.reset_rag_cache()
+            core.reset_settings_cache()

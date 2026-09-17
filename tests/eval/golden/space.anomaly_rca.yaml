@@ -1,0 +1,11 @@
+workflow_id: space.anomaly_rca
+sector: space
+sample: telemetry_rw_fault
+request: Reaction wheel 1 current spiked. What could explain it?
+expect:
+  level_in: [HYPOTHESES_READY, NEEDS_MORE_DATA]
+  required_quant_keys: ["score"]
+  min_findings: 3
+  must_mention_any: ["rank_hypotheses", "correlate", "detect_anomalies"]
+  forbidden: ["root cause is confirmed", "command the spacecraft"]
+  min_options: 2

@@ -1,0 +1,7 @@
+# Synthetic data generated for this project from a fixed seed. Not market data and not a price history of any real security.
+symbol,list_type,client_id,reason
+TSLA,RESTRICTED,ALL,Fictional research embargo pending a published note.
+PFE,RESTRICTED,C-2001,Fictional client-specific conflict.
+XOM,WATCH,ALL,Fictional heightened review for this sector.
+NVDA,WATCH,ALL,Fictional size review above normal participation.
+ACME,RESTRICTED,ALL,Fictional corporate action in progress.

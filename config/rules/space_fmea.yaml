@@ -1,0 +1,76 @@
+# Failure modes for the anomaly workflow. Scoring matches observed symptoms against
+# this table; it does not diagnose. Synthetic, written for this project.
+failure_modes:
+  - id: FM-RW-BEARING
+    name: Reaction wheel bearing degradation
+    subsystem: attitude control
+    symptoms: [rw_current_rise, rw_temp_rise, rw_speed_oscillation, rw_friction_torque_rise]
+    diagnostics:
+      - Run a low-speed characterisation sweep and compare drag torque against acceptance data.
+      - Review momentum management to reduce dwell near the observed resonant speed.
+    safety_note: Loss of one wheel may force a degraded pointing mode; review safe-mode criteria.
+  - id: FM-RW-LUBRICANT
+    name: Reaction wheel lubricant migration
+    subsystem: attitude control
+    symptoms: [rw_current_rise, rw_temp_rise, rw_current_step_change]
+    diagnostics:
+      - Compare current draw before and after a thermal cycle.
+    safety_note: Often precedes bearing degradation; trend rather than a single reading.
+  - id: FM-RW-CONTROLLER
+    name: Attitude controller mistuning
+    subsystem: attitude control
+    symptoms: [rw_speed_oscillation, attitude_error_oscillation]
+    diagnostics:
+      - Compare commanded against achieved rates across the oscillation band.
+    safety_note: A tuning fault usually leaves thermal signatures unchanged.
+  - id: FM-BAT-CAPACITY
+    name: Battery capacity fade
+    subsystem: power
+    symptoms: [battery_voltage_sag, depth_of_discharge_rise, eclipse_voltage_low]
+    diagnostics:
+      - Compare end-of-eclipse voltage against the same season last year.
+    safety_note: Sustained deep discharge accelerates the fade.
+  - id: FM-HEATER-STUCK
+    name: Heater stuck energised
+    subsystem: thermal
+    symptoms: [bus_current_rise, battery_voltage_sag, heater_on_during_eclipse_exit]
+    diagnostics:
+      - Check the heater enable state across a full orbit against the control band.
+      - Review the most recent thermal mode transition.
+    safety_note: Continuous load reduces charge margin every orbit.
+  - id: FM-SA-DEGRADATION
+    name: Solar array degradation
+    subsystem: power
+    symptoms: [array_current_low, panel_temp_nominal, charge_rate_low]
+    diagnostics:
+      - Compare array output against the solar incidence angle profile.
+    safety_note: Distinguish from a pointing error before concluding degradation.
+  - id: FM-SA-POINTING
+    name: Array pointing error
+    subsystem: attitude control
+    symptoms: [array_current_low, attitude_error_oscillation, panel_temp_low]
+    diagnostics:
+      - Correlate array current against the sun vector.
+    safety_note: Presents like array degradation; the attitude signature separates them.
+  - id: FM-THERM-RADIATOR
+    name: Radiator performance loss
+    subsystem: thermal
+    symptoms: [panel_temp_rise, component_temp_rise, no_load_change]
+    diagnostics:
+      - Compare temperature rise against dissipated power.
+    safety_note: A slow drift over months is more consistent than a step change.
+  - id: FM-COMMS-TWTA
+    name: Transmitter power droop
+    subsystem: communications
+    symptoms: [downlink_power_low, bus_current_rise, component_temp_rise]
+    diagnostics:
+      - Compare received signal level against the link budget for the pass geometry.
+    safety_note: Check the ground station before concluding a spacecraft fault.
+  - id: FM-SEU-LATCH
+    name: Single event upset or latched command
+    subsystem: avionics
+    symptoms: [unexpected_mode_change, heater_on_during_eclipse_exit, command_counter_jump]
+    diagnostics:
+      - Review the event log around the first anomalous sample.
+      - Compare against the radiation environment for the orbit and epoch.
+    safety_note: A latched state may clear on a controlled re-command; plan for ground coverage.

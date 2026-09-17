@@ -1,0 +1,31 @@
+{
+  "mission_name": "Northlight-1",
+  "operator": "Northlight Imaging (fictional)",
+  "activity_type": "earth_observation",
+  "orbit": {
+    "altitude_km": 610,
+    "inclination_deg": 97.8,
+    "type": "sun_synchronous"
+  },
+  "frequencies": [
+    {
+      "band": "X",
+      "center_mhz": 8200.0,
+      "bandwidth_mhz": 300.0,
+      "direction": "downlink",
+      "eirp_dbw": 12.5
+    },
+    {
+      "band": "S",
+      "center_mhz": 2230.0,
+      "bandwidth_mhz": 4.0,
+      "direction": "uplink",
+      "eirp_dbw": 3.0
+    }
+  ],
+  "launch_site": "Vandenberg SFB",
+  "launch_date": "2027-04-15",
+  "jurisdictions": [
+    "US"
+  ]
+}

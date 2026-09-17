@@ -1,0 +1,70 @@
+# Requirement checklists for the licensing workflow. Authored summary of public
+# frameworks; verify against the current official text before filing.
+activities:
+  earth_observation: {frameworks: [fcc_space_station, itu_filing, debris_mitigation, remote_sensing]}
+  communications: {frameworks: [fcc_space_station, itu_filing, debris_mitigation]}
+  launch: {frameworks: [faa_launch, debris_mitigation]}
+  reentry: {frameworks: [faa_reentry, debris_mitigation]}
+  in_space_servicing: {frameworks: [fcc_space_station, itu_filing, debris_mitigation], novel: true}
+  debris_removal: {frameworks: [fcc_space_station, itu_filing, debris_mitigation], novel: true}
+  in_space_manufacturing: {frameworks: [fcc_space_station, debris_mitigation], novel: true}
+  resource_extraction: {frameworks: [debris_mitigation], novel: true}
+
+frameworks:
+  faa_launch:
+    authority: FAA Office of Commercial Space Transportation
+    reference: 14 CFR Part 450
+    typical_months: [6, 18]
+    items:
+      - Policy review submission
+      - Payload review or evidence of another agency's authorisation
+      - Flight safety analysis, including debris and any toxic or blast hazards
+      - Environmental review under NEPA
+      - Maximum probable loss determination and financial responsibility
+  faa_reentry:
+    authority: FAA Office of Commercial Space Transportation
+    reference: 14 CFR Part 450
+    typical_months: [6, 18]
+    items:
+      - Reentry safety analysis and casualty expectation
+      - Disposal or recovery plan
+      - Environmental review under NEPA
+  fcc_space_station:
+    authority: Federal Communications Commission
+    reference: 47 CFR Part 25
+    typical_months: [6, 24]
+    items:
+      - Space station application with orbit and emission characteristics
+      - Interference analysis against existing and planned systems
+      - Earth station authorisation or blanket licence where applicable
+      - Orbital debris mitigation showing
+  itu_filing:
+    authority: National administration filing to the ITU
+    reference: ITU Radio Regulations, Article 9
+    typical_months: [12, 48]
+    items:
+      - Advance publication information
+      - Coordination request identifying affected administrations
+      - Bilateral coordination with each affected administration
+      - Notification for recording in the Master Register
+  debris_mitigation:
+    authority: Licensing authority
+    reference: National and international debris guidance
+    typical_months: [1, 3]
+    items:
+      - Passivation plan for stored energy at end of mission
+      - Collision avoidance capability and conjunction response process
+      - Post-mission disposal plan within the applicable period
+      - Casualty risk assessment for any surviving reentry debris
+  remote_sensing:
+    authority: NOAA Commercial Remote Sensing Regulatory Affairs
+    reference: 15 CFR Part 960
+    typical_months: [2, 6]
+    items:
+      - Remote sensing system licence application
+      - Data protection and conditions compliance plan
+
+novel_activity_note: >-
+  This activity has no settled licensing framework. The checklist covers the parts that map onto
+  existing regimes; the remainder are open questions for regulatory counsel rather than gaps to
+  be filled from a template.

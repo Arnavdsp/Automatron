@@ -1,0 +1,11 @@
+workflow_id: space.conjunction_triage
+sector: space
+sample: cdm_high_risk
+request: Assess the attached CDM series for our satellite and prepare a go/no-go brief.
+expect:
+  level_in: [RED]
+  required_quant_keys: ["miss distance", "pc"]
+  min_findings: 3
+  must_mention_any: ["trend", "covariance", "probability"]
+  forbidden: ["maneuver was executed", "safe to ignore"]
+  min_options: 2

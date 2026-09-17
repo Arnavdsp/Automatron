@@ -1,0 +1,65 @@
+"""Sample strategy with the controls a reviewer expects to find."""
+import logging
+import os
+
+import pandas as pd
+
+LOG = logging.getLogger(__name__)
+
+MAX_POSITION_NOTIONAL = 250_000.0
+MAX_ORDERS_PER_SESSION = 50
+DRY_RUN = os.environ.get("STRATEGY_DRY_RUN", "1") == "1"
+API_KEY = os.environ["BROKER_API_KEY"]
+
+
+def build_signal(prices: pd.DataFrame, fast: int = 10, slow: int = 50) -> pd.Series:
+    """Cross of two moving averages, shifted so today's signal trades tomorrow."""
+    fast_ma = prices["close"].rolling(fast).mean()
+    slow_ma = prices["close"].rolling(slow).mean()
+    raw = (fast_ma > slow_ma).astype(int)
+    return raw.shift(1).fillna(0)
+
+
+def position_size(signal: float, price: float, equity: float) -> int:
+    notional = min(equity * 0.02, MAX_POSITION_NOTIONAL)
+    return int((notional * signal) // price)
+
+
+def trading_halted(session_pnl: float, error_count: int) -> bool:
+    """Kill switch: stop on a loss threshold or repeated errors."""
+    return session_pnl < -0.03 * MAX_POSITION_NOTIONAL or error_count >= 5
+
+
+def run_session(broker, prices: pd.DataFrame, equity: float) -> int:
+    sent = 0
+    errors = 0
+    session_pnl = 0.0
+    signal = build_signal(prices)
+    for timestamp, row in prices.iterrows():
+        if trading_halted(session_pnl, errors):
+            LOG.warning("halted at %s", timestamp)
+            break
+        if sent >= MAX_ORDERS_PER_SESSION:
+            break
+        quantity = position_size(float(signal.loc[timestamp]), float(row["close"]), equity)
+        if quantity <= 0:
+            continue
+        if quantity * float(row["close"]) > MAX_POSITION_NOTIONAL:
+            LOG.error("size %s above the limit at %s", quantity, timestamp)
+            continue
+        LOG.info("submitting %s at %s", quantity, timestamp)
+        try:
+            if DRY_RUN:
+                LOG.info("dry run, nothing sent")
+            else:
+                broker.submit_order(symbol="MSFT", quantity=quantity, timestamp=timestamp)
+            sent += 1
+        except (ConnectionError, TimeoutError) as exc:
+            errors += 1
+            LOG.exception("order failed at %s: %s", timestamp, exc)
+    return sent
+
+
+def test_signal_is_shifted():
+    frame = pd.DataFrame({"close": [1.0, 2.0, 3.0, 4.0, 5.0] * 20})
+    assert build_signal(frame, 2, 4).iloc[0] == 0

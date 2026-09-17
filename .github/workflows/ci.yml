@@ -1,0 +1,80 @@
+name: ci
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_call:
+
+concurrency:
+  # github.workflow is the caller's name when this is reached through workflow_call,
+  # so a push to main does not put the standalone run and the deploy's copy of it in
+  # one group, where cancel-in-progress would kill the deploy's checks.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # No provider keys in CI: the suite runs against the fake model so it is
+      # hermetic and costs nothing.
+      AUTOMATRON_FAKE_LLM: "1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: lint
+        run: ruff check .
+
+      - name: build modules from notebooks
+        run: python scripts/build_notebooks.py
+
+      - name: notebooks carry no outputs
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          problems = []
+          for path in sorted(pathlib.Path("notebooks").glob("*.ipynb")):
+              notebook = json.loads(path.read_text(encoding="utf-8"))
+              if notebook.get("metadata", {}).get("colab") is not None:
+                  problems.append(f"{path.name}: carries editor metadata")
+              for index, cell in enumerate(notebook.get("cells", [])):
+                  if cell.get("outputs"):
+                      problems.append(f"{path.name}: cell {index} has stored output")
+                  if cell.get("execution_count") is not None:
+                      problems.append(f"{path.name}: cell {index} has an execution count")
+          for problem in problems:
+              print(problem)
+          sys.exit(1 if problems else 0)
+          PY
+
+      - name: tests
+        run: pytest -q
+
+  image:
+    # Proves the image still builds. It is not pushed anywhere from here; the
+    # deploy workflow builds and releases its own.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: build image
+        run: docker build -t automatron:ci .
