@@ -1,0 +1,53 @@
+# Provider routing. Model ids change often; they are configuration, not code.
+# Client-side pacing values (rpm/rpd) are conservative starting points, not
+# guaranteed provider limits. Providers whose key is missing are dropped from
+# every chain at startup.
+providers:
+  gemini:
+    kind: google_genai
+    model: gemini-2.5-flash
+    api_key_env: GEMINI_API_KEY
+    context_tokens: 1000000
+    rpm: 10
+    rpd: 250
+    supports_tools: true
+    supports_structured: true
+  groq:
+    kind: groq
+    model: openai/gpt-oss-20b
+    api_key_env: GROQ_API_KEY
+    context_tokens: 131072
+    rpm: 30
+    rpd: 1000
+    supports_tools: true
+    supports_structured: true
+  cerebras:
+    kind: cerebras
+    model: gpt-oss-120b
+    api_key_env: CEREBRAS_API_KEY
+    context_tokens: 8192
+    rpm: 30
+    rpd: 1000
+    supports_tools: true
+    supports_structured: true
+  openrouter:
+    kind: openai_compatible
+    base_url: https://openrouter.ai/api/v1
+    models: []
+    api_key_env: OPENROUTER_API_KEY
+    context_tokens: 32768
+    rpm: 20
+    rpd: 50
+    supports_tools: true
+    supports_structured: false
+
+roles:
+  coordinator: [gemini, openrouter, cerebras, groq]
+  researcher:  [openrouter, gemini, groq, cerebras]
+  analyst:     [cerebras, groq, openrouter, gemini]
+  executor:    [groq, cerebras, openrouter, gemini]
+
+# Share of a provider's daily budget held back for the coordinator, so planning
+# and synthesis survive a busy run.
+quota_reservation:
+  gemini: {coordinator: 0.6}

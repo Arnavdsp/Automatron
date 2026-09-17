@@ -1,0 +1,52 @@
+# Display strings and thresholds per sector. The UI reads these; code never
+# hardcodes them. Environment variables listed in .env.example override the
+# thresholds at startup.
+space:
+  display_name: Automatron Space
+  tagline: Conjunction, anomaly and licensing decision support
+  accent: "#7C8CFF"
+  disclaimer: >-
+    Decision support only. Results using public or sample data are illustrative and are not
+    operational conjunction screening. A qualified operator makes every maneuver, engineering,
+    and regulatory decision.
+  thresholds:
+    pc_red: 1.0e-4
+    pc_yellow: 1.0e-6
+    hard_body_radius_m: 20
+    od_age_warn_days: 3
+    jump_orders: 1.0
+
+quant:
+  display_name: Automatron Quant
+  tagline: Signal validation, trade gates and code compliance
+  accent: "#2DD4BF"
+  disclaimer: >-
+    Decision support only. Not investment, legal, or compliance advice. No orders are placed.
+    A qualified human approves every model, trade, and deployment.
+  thresholds:
+    trade_approval_usd: 100000
+    high_risk_segments: [HIGH_RISK, PEP, NEW_UNVERIFIED]
+    dsr_pass: 0.95
+    pbo_fail: 0.5
+    cscv_blocks: 12
+
+ecommerce:
+  display_name: Automatron E-commerce
+  tagline: Disputes, chargebacks and seller appeals
+  accent: "#F5A524"
+  disclaimer: >-
+    Decision support only. Risk signals are not proof of fraud. A trained specialist makes the
+    final call on every claim, dispute submission, and account action.
+  thresholds:
+    high_value_usd: 500
+    risk_high: 70
+    risk_medium: 40
+
+realestate:
+  display_name: Automatron Real Estate
+  tagline: Due diligence, permits and dispute summaries
+  accent: "#E07A5F"
+  disclaimer: >-
+    Decision support only. Not legal advice. Findings must be reviewed by a licensed attorney,
+    permit examiner, or property manager as appropriate. Local law varies.
+  thresholds: {}
