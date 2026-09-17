@@ -111,3 +111,19 @@ through redaction untouched and would have appeared in logs and trace events. Re
 replaces the literal value of every secret the process was configured with, which covers any
 provider whose key format carries no marker. Values shorter than twelve characters are left
 alone, since masking those would blank out ordinary words.
+
+## D13 — Fake slots are not rate limited
+
+In fake mode every slot answers instantly from a script, but the slots were still built with
+each provider's real requests-per-minute figure, so the client-side limiter paced calls against
+a provider that was never contacted. A single run spent roughly eighteen seconds waiting, almost
+all of it on the coordinator's two calls against a ten-per-minute allowance. Fake slots now use a
+nominal high rate instead, which took the graph test suite from about seven minutes to seven
+seconds and matters as much for the offline demo as for the tests.
+
+## D14 — The checkpointer is closed explicitly
+
+The SQLite checkpointer runs its connection on a non-daemon thread, so a process that never
+closes it does not exit: the graph work finishes, the last line prints, and the interpreter then
+hangs forever. `close_run_service()` cancels in-flight runs and closes the connection, and both
+the tests and the application shutdown path call it.
