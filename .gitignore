@@ -1,0 +1,33 @@
+# environment
+.env
+.env.local
+
+# generated modules
+automatron_build/
+
+# runtime state
+.qdrant/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+audit.jsonl
+
+# caches
+__pycache__/
+*.py[cod]
+.cache/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# virtualenvs
+.venv/
+venv/
+
+# packaging
+*.egg-info/
+build/
+dist/
+
+# os
+.DS_Store
