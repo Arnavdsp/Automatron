@@ -5,10 +5,12 @@
 providers:
   gemini:
     kind: google_genai
-    # Newer 3.x Flash models are free-tier eligible but their published daily
-    # request caps are far tighter, which matters because the coordinator is the
-    # heaviest caller. Override with GEMINI_MODEL to try a newer one.
-    model: gemini-2.5-flash
+    # 2.5 Flash is still listed by the models endpoint but refuses generateContent
+    # for new keys. Among the 3.x Flash models that do answer, this one was both
+    # the fastest and the only one to answer every probe; 3.8 Flash answers too but
+    # averaged an order of magnitude slower, which the coordinator pays four times
+    # per run. Override with GEMINI_MODEL.
+    model: gemini-3.5-flash
     api_key_env: GEMINI_API_KEY
     context_tokens: 1000000
     rpm: 10
@@ -22,6 +24,33 @@ providers:
     context_tokens: 131072
     rpm: 30
     rpd: 1000
+    supports_tools: true
+    supports_structured: true
+  # A second Groq key serving the larger model. It stands in for Cerebras, whose
+  # free allowance is gated behind billing, and gives the analyst role a rate-limit
+  # bucket of its own rather than sharing the executor's.
+  groq_alt:
+    kind: groq
+    model: openai/gpt-oss-120b
+    api_key_env: GROQ_API_KEY_2
+    context_tokens: 131072
+    rpm: 30
+    rpd: 1000
+    supports_tools: true
+    supports_structured: true
+  # Mistral's free tier serves the ministral family; the small and medium models
+  # answer 429 on this tier regardless of pacing, so they are left out. Expands
+  # into one slot per model, like OpenRouter.
+  mistral:
+    kind: mistral
+    models:
+      - ministral-14b-latest
+      - ministral-8b-latest
+      - ministral-3b-latest
+    api_key_env: MISTRAL_API_KEY
+    context_tokens: 131072
+    rpm: 20
+    rpd: 500
     supports_tools: true
     supports_structured: true
   cerebras:
@@ -39,11 +68,13 @@ providers:
     kind: openai_compatible
     base_url: https://openrouter.ai/api/v1
     # Free models that advertise tool support, tried in order.
+    # Ordered by what answered fastest on a live check; upstream capacity on the
+    # free pool moves around, which is what the failover chain is for.
     models:
-      - nvidia/nemotron-3-super-120b-a12b:free
       - nex-agi/nex-n2.5-pro:free
-      - google/gemma-4-31b-it:free
       - dots-studio/dots-3-note-preview:free
+      - nvidia/nemotron-3-super-120b-a12b:free
+      - google/gemma-4-31b-it:free
     api_key_env: OPENROUTER_API_KEY
     context_tokens: 262144
     rpm: 20
@@ -52,11 +83,14 @@ providers:
     supports_tools: true
     supports_structured: false
 
+# Cerebras sits at the tail of every chain rather than being removed: it is only
+# reached if everything else is down, and it rejoins its old position by editing
+# these lists once billing is enabled on the account.
 roles:
-  coordinator: [gemini, openrouter, cerebras, groq]
-  researcher:  [openrouter, gemini, groq, cerebras]
-  analyst:     [cerebras, groq, openrouter, gemini]
-  executor:    [groq, cerebras, openrouter, gemini]
+  coordinator: [gemini, openrouter, mistral, groq_alt, groq, cerebras]
+  researcher:  [openrouter, mistral, gemini, groq, groq_alt, cerebras]
+  analyst:     [groq_alt, groq, mistral, openrouter, gemini, cerebras]
+  executor:    [groq, groq_alt, mistral, openrouter, gemini, cerebras]
 
 # Share of a provider's daily budget held back for the coordinator, so planning
 # and synthesis survive a busy run.

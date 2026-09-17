@@ -9,7 +9,9 @@ FAKE_KEYS = (
     "gsk_" + "a" * 24,
     "sk-or-v1-" + "b" * 24,
     "AIza" + "c" * 24,
-    "csk-" + "d" * 24,
+    # Google issues this second shape too, which shares no prefix with the first.
+    "AQ." + "Ab8RN6" + "d" * 24,
+    "csk-" + "e" * 24,
 )
 
 
@@ -69,3 +71,34 @@ def test_logger_is_configured_once():
     logger = core.get_logger("probe")
     assert logger.name == "automatron.probe"
     assert logging.getLogger(core.LOGGER_NAME).handlers
+
+
+class TestConfiguredSecretValues:
+    """Some providers issue keys with no recognisable prefix, so patterns miss them."""
+
+    def test_a_prefixless_key_is_masked_because_it_is_configured(self, monkeypatch):
+        # Same shape as a real prefixless key, assembled so it is not one.
+        opaque = "Zq" + "7x" * 8 + "Kt" + "4m" * 6
+        assert opaque in core.redact(f"bearer {opaque}"), "no pattern should match this shape"
+
+        monkeypatch.setenv("MISTRAL_API_KEY", opaque)
+        core.reset_settings_cache()
+        try:
+            masked = core.redact(f"bearer {opaque}")
+            assert opaque not in masked
+            assert "[redacted-key]" in masked
+        finally:
+            core.reset_settings_cache()
+
+    def test_short_values_are_not_masked(self, monkeypatch):
+        # Masking a short value would blank out ordinary words in every log line.
+        monkeypatch.setenv("MISTRAL_API_KEY", "abc")
+        core.reset_settings_cache()
+        try:
+            assert "abc" not in core.configured_secret_values()
+        finally:
+            core.reset_settings_cache()
+
+    def test_no_keys_configured_is_not_an_error(self):
+        core.reset_settings_cache()
+        assert isinstance(core.configured_secret_values(), tuple)
