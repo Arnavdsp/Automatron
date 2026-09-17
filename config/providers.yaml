@@ -5,10 +5,12 @@
 providers:
   gemini:
     kind: google_genai
-    # Newer 3.x Flash models are free-tier eligible but their published daily
-    # request caps are far tighter, which matters because the coordinator is the
-    # heaviest caller. Override with GEMINI_MODEL to try a newer one.
-    model: gemini-2.5-flash
+    # 2.5 Flash is still listed by the models endpoint but refuses generateContent
+    # for new keys. Among the 3.x Flash models that do answer, this one was both
+    # the fastest and the only one to answer every probe; 3.8 Flash answers too but
+    # averaged an order of magnitude slower, which the coordinator pays four times
+    # per run. Override with GEMINI_MODEL.
+    model: gemini-3.5-flash
     api_key_env: GEMINI_API_KEY
     context_tokens: 1000000
     rpm: 10
@@ -39,11 +41,13 @@ providers:
     kind: openai_compatible
     base_url: https://openrouter.ai/api/v1
     # Free models that advertise tool support, tried in order.
+    # Ordered by what answered fastest on a live check; upstream capacity on the
+    # free pool moves around, which is what the failover chain is for.
     models:
-      - nvidia/nemotron-3-super-120b-a12b:free
       - nex-agi/nex-n2.5-pro:free
-      - google/gemma-4-31b-it:free
       - dots-studio/dots-3-note-preview:free
+      - nvidia/nemotron-3-super-120b-a12b:free
+      - google/gemma-4-31b-it:free
     api_key_env: OPENROUTER_API_KEY
     context_tokens: 262144
     rpm: 20

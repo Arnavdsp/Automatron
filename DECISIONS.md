@@ -16,15 +16,26 @@ Checks for staged credentials, stored notebook outputs, and private working file
 local git hooks under `.git/hooks/`, which git does not track by design. Each clone installs
 them separately. This keeps working-environment configuration out of the published history.
 
-## D3 — Gemini stays on the 2.5 Flash model
+## D3 — Gemini model chosen by measurement, not by version number
 
-Newer 3.x Flash models are free-tier eligible, but their published free daily request
-caps are an order of magnitude tighter. The coordinator is the heaviest caller in every
-run, so a larger daily request budget matters more here than newer model capabilities.
-`gemini-2.5-flash` remains free-tier eligible and keeps roughly 250 requests per day
-against roughly 20 for the newest Flash model, which is the difference between a demo
-that serves dozens of runs a day and one that serves three. `GEMINI_MODEL` overrides it
-without a code change.
+An earlier revision of this entry kept `gemini-2.5-flash`, reasoning from the published
+documentation that it carried a much larger free daily request budget. A live call
+disproved it: the models endpoint still lists `gemini-2.5-flash`, but `generateContent`
+answers 404, "no longer available to new users". Documentation and model listings both lag
+the API, so model ids are confirmed by calling them.
+
+Among the 3.x Flash models that do answer, three probes each gave `gemini-3.5-flash` three
+successes averaging about 1.4 seconds, `gemini-3.8-flash` three successes averaging about
+12 seconds, and `gemini-3.6-flash` two successes out of three. The coordinator makes up to
+four calls per run against a 90-second budget to the approval gate, so the slowest option
+would spend most of that budget before any sub-agent ran. `gemini-3.5-flash` is the default
+for latency and availability; `GEMINI_MODEL` switches it without a code change, and the
+quality pass is the right point to retest whether a slower, newer model plans well enough
+to be worth the time.
+
+Free-tier 3.x capacity is visibly contended: probes returned 503 "experiencing high demand"
+often enough that the router's transient-error handling matters more here than the daily
+quota logic.
 
 ## D4 — Cerebras free-tier figures corrected
 
@@ -41,3 +52,11 @@ and chosen for general-purpose instruction following, a large context window, an
 spread so that one vendor's outage does not empty the chain. Free models are capped at 20
 requests per minute for everyone, and 50 requests per day until an account has purchased
 credits, at which point the daily cap rises substantially.
+
+## D6 — Cerebras needs billing enabled before it serves traffic
+
+The Cerebras key authenticates and the models endpoint lists `gpt-oss-120b`, but inference
+returns 402, "payment required to access this resource". The free allowance is released
+only once an account has a verified payment method on file. Until that is done the provider
+is configured but unusable, so the router drops it after the first failure and the analyst
+role falls through to Groq. The account holder enables billing; no code change applies.

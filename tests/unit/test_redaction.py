@@ -9,7 +9,9 @@ FAKE_KEYS = (
     "gsk_" + "a" * 24,
     "sk-or-v1-" + "b" * 24,
     "AIza" + "c" * 24,
-    "csk-" + "d" * 24,
+    # Google issues this second shape too, which shares no prefix with the first.
+    "AQ." + "Ab8RN6" + "d" * 24,
+    "csk-" + "e" * 24,
 )
 
 
