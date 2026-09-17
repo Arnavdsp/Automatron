@@ -21,6 +21,11 @@ def scenarios():
     ]
 
 
+def sector_modules():
+    """Every sector module a golden scenario refers to."""
+    return sorted({f"automatron_{scenario['sector']}" for scenario in scenarios()})
+
+
 @pytest.fixture
 def eval_env(tmp_path, monkeypatch):
     monkeypatch.setenv("RUNTIME_DIR", str(tmp_path))
@@ -30,8 +35,9 @@ def eval_env(tmp_path, monkeypatch):
     core.reset_run_service()
     core.clear_registry()
     # A module registers its pack on first import only, and imports are cached, so
-    # re-register explicitly after clearing rather than re-importing.
-    for name in ("automatron_space",):
+    # re-register explicitly after clearing rather than re-importing. The set comes
+    # from the scenarios themselves, so a new sector needs no edit here.
+    for name in sector_modules():
         core.register_sector(importlib.import_module(name).SECTOR_PACK)
     yield
     core.clear_fake_script()

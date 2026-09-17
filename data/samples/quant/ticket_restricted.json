@@ -1,0 +1,15 @@
+{
+  "ticket_id": "TKT-2026-0119",
+  "instrument": "TSLA",
+  "asset_class": "equity",
+  "side": "SELL",
+  "quantity": 400,
+  "limit_price": 248.1,
+  "currency": "USD",
+  "client_id": "C-1044",
+  "client_segment": "RETAIL",
+  "strategy_id": "mean_reversion_intraday",
+  "rationale": "Reducing exposure ahead of a volatility event.",
+  "trader": "sample.trader",
+  "note": "Synthetic data generated for this project from a fixed seed. Not market data and not a price history of any real security."
+}

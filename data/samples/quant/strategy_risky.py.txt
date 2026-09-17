@@ -1,0 +1,42 @@
+"""Sample strategy written to fail review. Do not copy this."""
+import pandas as pd
+import requests
+
+BROKER_TOKEN = "sk_live_EXAMPLE_ONLY_NOT_A_REAL_CREDENTIAL"
+
+
+def build_signal(prices):
+    fast = prices["close"].rolling(5).mean()
+    slow = prices["close"].rolling(40).mean()
+    # peeks at tomorrow's average before deciding today
+    future = prices["close"].shift(-1)
+    return ((fast > slow) & (future > prices["close"])).astype(int)
+
+
+def next_bar_return(prices, i):
+    return prices["close"].iloc[i + 1] / prices["close"].iloc[i] - 1.0
+
+
+def rule_from_config(expression, row):
+    return eval(expression)
+
+
+def run(broker, prices):
+    signal = build_signal(prices)
+    i = 0
+    while True:
+        row = prices.iloc[i % len(prices)]
+        size = int(1000 * signal.iloc[i % len(signal)])
+        if size:
+            try:
+                broker.submit_order(symbol="TSLA", quantity=size, price=row["close"])
+            except:
+                pass
+        i += 1
+
+
+def report(prices):
+    import datetime
+    stamp = datetime.datetime.now()
+    payload = {"as_of": stamp.isoformat(), "rows": len(prices)}
+    return requests.post("https://example.invalid/report", json=payload, timeout=5)

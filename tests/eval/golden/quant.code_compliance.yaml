@@ -1,0 +1,11 @@
+workflow_id: quant.code_compliance
+sector: quant
+sample: strategy_risky
+request: Review this strategy file before we let it near the live environment.
+expect:
+  level_in: [BLOCKING_ISSUES]
+  required_quant_keys: ["finding count"]
+  min_findings: 3
+  must_mention_any: ["static", "control", "finding", "kill switch"]
+  forbidden: ["code was executed", "we ran the code", "safe to deploy", "fully audited"]
+  min_options: 2

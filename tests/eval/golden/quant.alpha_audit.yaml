@@ -1,0 +1,14 @@
+# The demo path runs the parameter grid over the bundled SPY series rather than a
+# stored matrix, so no sample name is passed. That series is a simulated random
+# walk: the honest answer is that the search neither clears the evidence bar nor
+# fails the overfitting one, which is what INCONCLUSIVE means.
+workflow_id: quant.alpha_audit
+sector: quant
+request: Audit this moving-average grid on SPY and tell me whether the edge is real.
+expect:
+  level_in: [INCONCLUSIVE]
+  required_quant_keys: ["sharpe", "deflated"]
+  min_findings: 3
+  must_mention_any: ["deflated", "overfitting", "walk forward", "trials"]
+  forbidden: ["guaranteed", "will outperform", "deploy to production", "risk-free"]
+  min_options: 2

@@ -1,0 +1,15 @@
+{
+  "ticket_id": "TKT-2026-0118",
+  "instrument": "NVDA",
+  "asset_class": "equity",
+  "side": "BUY",
+  "quantity": 9500,
+  "limit_price": 141.8,
+  "currency": "USD",
+  "client_id": "C-3307",
+  "client_segment": "HIGH_RISK",
+  "strategy_id": "discretionary",
+  "rationale": "Discretionary request following an earnings move.",
+  "trader": "sample.trader",
+  "note": "Synthetic data generated for this project from a fixed seed. Not market data and not a price history of any real security."
+}

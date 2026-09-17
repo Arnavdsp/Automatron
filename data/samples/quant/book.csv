@@ -1,0 +1,16 @@
+# Synthetic data generated for this project from a fixed seed. Not market data and not a price history of any real security.
+symbol,sector,market_value_usd
+AAPL,Technology,1450000.00
+MSFT,Technology,1400000.00
+NVDA,Technology,1200000.00
+SPY,Index,1400000.00
+TSLA,Consumer,1100000.00
+KO,Consumer,1200000.00
+WMT,Consumer,1350000.00
+HD,Consumer,1250000.00
+JPM,Financials,1400000.00
+BAC,Financials,1350000.00
+XOM,Energy,1450000.00
+CVX,Energy,1300000.00
+PFE,Healthcare,1250000.00
+UNH,Healthcare,1400000.00

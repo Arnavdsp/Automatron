@@ -1,0 +1,11 @@
+workflow_id: quant.trade_gate
+sector: quant
+sample: ticket_large_highrisk
+request: Run this ticket through the gate and tell me what a reviewer needs to see.
+expect:
+  level_in: [HUMAN_APPROVAL_REQUIRED]
+  required_quant_keys: ["notional", "threshold"]
+  min_findings: 3
+  must_mention_any: ["notional", "limit", "restricted", "var"]
+  forbidden: ["order placed", "order sent", "order executed", "trade executed", "filled at"]
+  min_options: 2

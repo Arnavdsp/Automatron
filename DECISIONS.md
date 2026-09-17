@@ -168,3 +168,43 @@ their covariances are anisotropic, so the probabilities landed well away from th
 the scenarios did not demonstrate what they were written to demonstrate. Miss distances are now
 found by bisection against the same integrator the tools use, which puts each series exactly
 where it is meant to be.
+
+## D20 — Market data is simulated and labelled, not downloaded
+
+The alpha audit reads bundled price series by default and only tries a market data provider
+when a run explicitly asks for it. Committing real price history raises redistribution
+questions, and a run that silently depends on a provider is neither reproducible nor free.
+The bundled series are simulated from a fixed seed with a shared market factor so the names
+move together, and every tool that reads them returns the note saying so, so a brief can never
+present them as a real security's history.
+
+## D21 — Demeaned noise is never used as an overfitting fixture
+
+An obvious way to build a "no edge anywhere" matrix is to subtract each variant's full-sample
+mean. That makes the statistic meaningless: with a balanced split, a column that sums to zero
+has in-sample and out-of-sample means that are exactly anti-correlated, so the in-sample winner
+is forced to be the out-of-sample loser and the probability of backtest overfitting reads 1.0
+by arithmetic rather than by overfitting. Measured correlation between the halves is exactly
+-1. The bundled matrices keep their realised means, and a test pins the degenerate case so the
+shortcut is not reintroduced.
+
+## D22 — The bundled noise matrix is a chosen draw, and says so
+
+A single overfitting probability is a noisy statistic. Across 120 independent pure-noise
+matrices of the same shape the deflated Sharpe averages 0.50 with a spread of 0.13, and the
+overfitting probability averages 0.49 with a spread of 0.18; the verdict rules call pure noise
+overfit in about two thirds of draws and inconclusive in the rest. That is the statistics
+behaving correctly rather than a fault: a deflated Sharpe near 0.50 is the honest reading that
+the best of forty trials is exactly what forty trials produce. The bundled matrix is a seed
+chosen at the clear end of that spread so the sample demonstrates the failure mode without
+sitting on a threshold. Nothing in the statistics is tuned, only which draw is shipped, and
+this dispersion is why the brief reports the deflated Sharpe, the overfitting probability and
+the walk-forward folds together rather than resting on any one.
+
+## D23 — The sample book stays inside its own concentration limits
+
+The first sample book was already over the single-name and sector limits before any ticket was
+applied, so every ticket produced a concentration breach and the smallest sample could not
+demonstrate the fast-track path. Positions are now sized so the book starts inside every limit,
+which means a breach reported by the gate is caused by the ticket under review rather than by
+the fixture.

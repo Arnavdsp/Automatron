@@ -7,6 +7,20 @@ extend-exclude = ["automatron_build"]
 [lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[lint.per-file-ignores]
+# The sector notebooks continue the core module's namespace on purpose: each opens
+# with `from automatron_core import *` so a cell reads the way it would in the core
+# notebook. F403/F405 exist to catch an accidental star import, which this is not.
+"notebooks/automatron_space.ipynb" = ["F403", "F405"]
+"notebooks/automatron_quant.ipynb" = ["F403", "F405"]
+"notebooks/automatron_ecommerce.ipynb" = ["F403", "F405"]
+"notebooks/automatron_realestate.ipynb" = ["F403", "F405"]
+
+[lint.flake8-bugbear]
+# These are how FastAPI declares dependencies and uploads; the call in the default
+# is the framework's interface, not an accidental shared mutable.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.File", "fastapi.Form", "fastapi.Query"]
+
 [lint.isort]
 known-first-party = [
     "automatron_core",
