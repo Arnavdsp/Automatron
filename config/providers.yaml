@@ -1,10 +1,13 @@
 # Provider routing. Model ids change often; they are configuration, not code.
-# Client-side pacing values (rpm/rpd) are conservative starting points, not
-# guaranteed provider limits. Providers whose key is missing are dropped from
-# every chain at startup.
+# Client-side pacing values (rpm/rpd) are conservative starting points taken from
+# each provider's published free-tier limits, not guarantees. Providers whose key
+# is missing are dropped from every chain at startup.
 providers:
   gemini:
     kind: google_genai
+    # Newer 3.x Flash models are free-tier eligible but their published daily
+    # request caps are far tighter, which matters because the coordinator is the
+    # heaviest caller. Override with GEMINI_MODEL to try a newer one.
     model: gemini-2.5-flash
     api_key_env: GEMINI_API_KEY
     context_tokens: 1000000
@@ -25,18 +28,26 @@ providers:
     kind: cerebras
     model: gpt-oss-120b
     api_key_env: CEREBRAS_API_KEY
-    context_tokens: 8192
-    rpm: 30
-    rpd: 1000
+    # Free tier serves a 65K window and paces at 5 requests per minute with a
+    # 1M token daily budget; rpd is derived from that budget, not a request cap.
+    context_tokens: 65536
+    rpm: 5
+    rpd: 200
     supports_tools: true
     supports_structured: true
   openrouter:
     kind: openai_compatible
     base_url: https://openrouter.ai/api/v1
-    models: []
+    # Free models that advertise tool support, tried in order.
+    models:
+      - nvidia/nemotron-3-super-120b-a12b:free
+      - nex-agi/nex-n2.5-pro:free
+      - google/gemma-4-31b-it:free
+      - dots-studio/dots-3-note-preview:free
     api_key_env: OPENROUTER_API_KEY
-    context_tokens: 32768
+    context_tokens: 262144
     rpm: 20
+    # 50/day without purchased credits; 1000/day once an account has bought some.
     rpd: 50
     supports_tools: true
     supports_structured: false
