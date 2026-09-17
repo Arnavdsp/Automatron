@@ -127,3 +127,17 @@ The SQLite checkpointer runs its connection on a non-daemon thread, so a process
 closes it does not exit: the graph work finishes, the last line prints, and the interpreter then
 hangs forever. `close_run_service()` cancels in-flight runs and closes the connection, and both
 the tests and the application shutdown path call it.
+
+## D15 — Provider dots are rendered from configuration, not fixed at four
+
+The interface specification describes four status dots, one per provider, from when the chain
+held exactly four. The chain now holds six providers across eleven slots, because OpenRouter and
+Mistral each contribute one slot per model. The header therefore renders one dot per provider
+taken from the live router, collapsing a provider's several models into its worst state, and a
+provider added or removed in `config/providers.yaml` appears or disappears without a code change.
+
+## D16 — Shutdown suppresses CancelledError explicitly
+
+Startup puts knowledge seeding on a background task and shutdown cancels it. `CancelledError`
+derives from `BaseException` rather than `Exception`, so suppressing `Exception` alone let it
+escape and made every clean shutdown raise. The suppression now names it.
