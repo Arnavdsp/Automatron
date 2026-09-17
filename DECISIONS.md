@@ -60,3 +60,18 @@ returns 402, "payment required to access this resource". The free allowance is r
 only once an account has a verified payment method on file. Until that is done the provider
 is configured but unusable, so the router drops it after the first failure and the analyst
 role falls through to Groq. The account holder enables billing; no code change applies.
+
+## D7 — Live provider tests skip on account limits rather than failing
+
+A provider that answers "payment required" or "daily allowance used up" is reporting the
+state of an account, not a defect in this code. Those two cases skip with the provider named
+in the reason, so a run of the live suite still shows at the top whether each provider is
+reachable, while a genuine fault, an empty completion or a refused tool call, still fails.
+
+## D8 — The live suite shares one event loop
+
+The provider SDKs cache async HTTP clients globally, so a client built during one test is
+reused by the next. With a fresh event loop per test that reuse raises "Event loop is
+closed" partway through the run, and closing the clients between tests is worse because the
+cache is shared. The live module therefore runs on a single module-scoped loop, which is
+also how the application runs: one long-lived loop for the process.
