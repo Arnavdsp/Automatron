@@ -92,3 +92,22 @@ url, which produced passages that could be retrieved but not cited, with nothing
 A title containing an unquoted colon caused exactly this and was only noticed because a test
 checked the committed files rather than the parser. Parse failures now log a warning and the
 body is still indexed.
+
+## D11 — Mistral joins the chain on the ministral models only
+
+Of the tool-capable models the Mistral key can list, only the ministral family actually answers
+on this tier. `mistral-small-latest` and `magistral-small-latest` return 429 even when calls are
+spaced several seconds apart, so the 429 reflects tier access rather than pacing, and
+`mistral-large-latest` returns 403 outright. The provider is therefore configured with
+`ministral-14b`, `ministral-8b` and `ministral-3b`, expanding into one slot per model in the same
+way as OpenRouter. Mistral sits mid-chain for every role: behind the provider each role prefers,
+ahead of the ones held in reserve.
+
+## D12 — Redaction masks configured secret values, not just recognisable shapes
+
+Key patterns only catch credentials with a distinctive prefix. The Mistral key is a plain
+32-character string that no pattern can match without also matching ordinary text, so it passed
+through redaction untouched and would have appeared in logs and trace events. Redaction now also
+replaces the literal value of every secret the process was configured with, which covers any
+provider whose key format carries no marker. Values shorter than twelve characters are left
+alone, since masking those would blank out ordinary words.
