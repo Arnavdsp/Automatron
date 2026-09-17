@@ -89,9 +89,7 @@ class TestDiscovery:
         assert sectors[0]["display_name"] == "Automatron Space"
 
     def test_sample_endpoint_returns_inputs(self, client):
-        body = client.get(
-            f"{API}/sectors/space/workflows/{testsector.WORKFLOW_ID}/sample"
-        ).json()
+        body = client.get(f"{API}/sectors/space/workflows/{testsector.WORKFLOW_ID}/sample").json()
         assert body["request"] == "Assess probe-1."
         assert "subject" in body["inputs"]
 
@@ -143,10 +141,12 @@ class TestRuns:
 
     def test_deciding_twice_conflicts(self, client):
         thread_id, _ = run_to_gate(client)
-        client.post(f"{API}/runs/{thread_id}/decision",
-                    json={"action": "approve", "reviewer": "Arnav"})
-        again = client.post(f"{API}/runs/{thread_id}/decision",
-                            json={"action": "reject", "reviewer": "Arnav"})
+        client.post(
+            f"{API}/runs/{thread_id}/decision", json={"action": "approve", "reviewer": "Arnav"}
+        )
+        again = client.post(
+            f"{API}/runs/{thread_id}/decision", json={"action": "reject", "reviewer": "Arnav"}
+        )
         assert again.status_code == 409
 
     def test_unknown_run_is_a_problem_document(self, client):
@@ -176,8 +176,12 @@ class TestUploads:
     def test_an_unsupported_file_type_is_refused(self, client):
         response = client.post(
             f"{API}/runs",
-            data={"sector": "space", "workflow_id": testsector.WORKFLOW_ID,
-                  "request": "x", "inputs_json": "{}"},
+            data={
+                "sector": "space",
+                "workflow_id": testsector.WORKFLOW_ID,
+                "request": "x",
+                "inputs_json": "{}",
+            },
             files={"files": ("payload.exe", b"binary", "application/octet-stream")},
         )
         assert response.status_code == 400
@@ -187,8 +191,12 @@ class TestUploads:
         files = [("files", (f"note{i}.md", b"hello", "text/markdown")) for i in range(6)]
         response = client.post(
             f"{API}/runs",
-            data={"sector": "space", "workflow_id": testsector.WORKFLOW_ID,
-                  "request": "x", "inputs_json": "{}"},
+            data={
+                "sector": "space",
+                "workflow_id": testsector.WORKFLOW_ID,
+                "request": "x",
+                "inputs_json": "{}",
+            },
             files=files,
         )
         assert response.status_code == 400
@@ -199,8 +207,12 @@ class TestUploads:
         core.reset_settings_cache()
         response = client.post(
             f"{API}/runs",
-            data={"sector": "space", "workflow_id": testsector.WORKFLOW_ID,
-                  "request": "x", "inputs_json": "{}"},
+            data={
+                "sector": "space",
+                "workflow_id": testsector.WORKFLOW_ID,
+                "request": "x",
+                "inputs_json": "{}",
+            },
             files={"files": ("note.md", b"hello world", "text/markdown")},
         )
         assert response.status_code == 400

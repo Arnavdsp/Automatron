@@ -139,7 +139,7 @@ def build_pack() -> core.SectorPack:
         input_schema=ProbeInputs,
         step_template="1. measure  2. context  3. classify",
         default_plan=DEFAULT_PLAN,
-        fake_script=FAKE_SCRIPT,
+        fake_script={"steps": FAKE_SCRIPT, "structured": STRUCTURED},
         level_vocab=["RED", "GREEN"],
         forbidden_phrases=[r"\bprobe was launched\b"],
         sample_name="probe_sample",

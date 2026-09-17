@@ -14,8 +14,10 @@ EXPECTED_DISPLAY = {
     "realestate": "Automatron Real Estate",
 }
 EXPECTED_ACCENT = {
-    "space": "#7C8CFF", "quant": "#2DD4BF",
-    "ecommerce": "#F5A524", "realestate": "#E07A5F",
+    "space": "#7C8CFF",
+    "quant": "#2DD4BF",
+    "ecommerce": "#F5A524",
+    "realestate": "#E07A5F",
 }
 
 
@@ -121,10 +123,20 @@ class TestStatusRendering:
 
     def test_trace_rows_mark_failover_and_errors(self):
         events = [
-            {"ts": "2026-01-01T00:00:00", "node": "plan", "kind": "failover",
-             "message": "gemini rate limited", "provider": "gemini", "model": "flash"},
-            {"ts": "2026-01-01T00:00:01", "node": "run_step", "kind": "error",
-             "message": "tool failed"},
+            {
+                "ts": "2026-01-01T00:00:00",
+                "node": "plan",
+                "kind": "failover",
+                "message": "gemini rate limited",
+                "provider": "gemini",
+                "model": "flash",
+            },
+            {
+                "ts": "2026-01-01T00:00:01",
+                "node": "run_step",
+                "kind": "error",
+                "message": "tool failed",
+            },
         ]
         markup = core.trace_html(events)
         assert 'class="row failover"' in markup
@@ -134,8 +146,15 @@ class TestStatusRendering:
         assert "No activity yet" in core.trace_html([])
 
     def test_status_wording_covers_every_run_state(self):
-        for status in ("queued", "running", "revising", "awaiting_approval",
-                       "approved", "rejected", "failed"):
+        for status in (
+            "queued",
+            "running",
+            "revising",
+            "awaiting_approval",
+            "approved",
+            "rejected",
+            "failed",
+        ):
             view = core.RunView(run_id="r", sector="space", workflow_id="w", status=status)
             assert core.status_line(view).strip()
 
@@ -146,11 +165,15 @@ class TestBriefRendering:
 
     def test_a_brief_renders_its_level_and_disclaimer(self):
         brief = {
-            "title": "T", "sector": "space", "workflow_id": "w", "summary": "S",
-            "recommendation": "Proposed: review.", "recommendation_level": "RED",
-            "confidence": "high", "confidence_reason": "clear",
-            "key_findings": [{"text": "Pc is high.", "severity": "high",
-                              "evidence_ids": ["T1"]}],
+            "title": "T",
+            "sector": "space",
+            "workflow_id": "w",
+            "summary": "S",
+            "recommendation": "Proposed: review.",
+            "recommendation_level": "RED",
+            "confidence": "high",
+            "confidence_reason": "clear",
+            "key_findings": [{"text": "Pc is high.", "severity": "high", "evidence_ids": ["T1"]}],
             "options": [{"name": "A", "description": "a"}, {"name": "B", "description": "b"}],
             "disclaimer": "Decision support only.",
         }
@@ -163,8 +186,17 @@ class TestBriefRendering:
         assert "could not be displayed" in core.brief_markdown_for_ui({"title": "only"})
 
     def test_evidence_rows_flatten_for_the_table(self):
-        brief = {"evidence": [{"id": "T1", "kind": "tool", "label": "measure",
-                               "locator": "c1", "excerpt": "x" * 400}]}
+        brief = {
+            "evidence": [
+                {
+                    "id": "T1",
+                    "kind": "tool",
+                    "label": "measure",
+                    "locator": "c1",
+                    "excerpt": "x" * 400,
+                }
+            ]
+        }
         rows = core.evidence_rows(brief)
         assert rows[0][0] == "T1"
         assert len(rows[0][4]) <= 160

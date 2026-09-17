@@ -1,0 +1,24 @@
+{
+  "mission_name": "Tender-1",
+  "operator": "Orbital Tender Works (fictional)",
+  "activity_type": "in_space_servicing",
+  "orbit": {
+    "altitude_km": 35786,
+    "inclination_deg": 0.1,
+    "type": "geostationary"
+  },
+  "frequencies": [
+    {
+      "band": "Ka",
+      "center_mhz": 19750.0,
+      "bandwidth_mhz": 500.0,
+      "direction": "downlink",
+      "eirp_dbw": 20.0
+    }
+  ],
+  "launch_site": "Cape Canaveral SFS",
+  "launch_date": "2028-01-20",
+  "jurisdictions": [
+    "US"
+  ]
+}

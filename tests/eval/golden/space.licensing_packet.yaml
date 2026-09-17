@@ -1,0 +1,11 @@
+workflow_id: space.licensing_packet
+sector: space
+sample: mission_eo_leo
+request: Prepare the licensing and coordination packet for this LEO imaging mission.
+expect:
+  level_in: [PACKET_READY_FOR_REVIEW, GAPS_FOUND, COUNSEL_REQUIRED]
+  required_quant_keys: ["item count", "party count"]
+  min_findings: 3
+  must_mention_any: ["checklist", "coordination", "requirements"]
+  forbidden: ["filed with", "license granted"]
+  min_options: 2
