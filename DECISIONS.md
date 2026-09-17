@@ -218,3 +218,12 @@ auth is also skipped entirely when no password is configured, which is convenien
 unsafe anywhere reachable, so the process now warns at startup when that is the case and the
 deploy workflow passes the password as a required secret, which fails the deploy rather than
 publishing an open service.
+
+## D25 — Releases go out through the same checks a pull request gets
+
+The deploy workflow calls the CI workflow and deploys only if it passes, so a red build cannot
+reach the running service. Authentication uses workload identity federation rather than a
+service account key, so nothing long-lived is stored in the repository's secrets, and the job
+mints a short-lived token per run. After the revision is live the workflow polls the health
+endpoint, allowing for this image's cold start, and fails the deploy if the new revision never
+answers.
