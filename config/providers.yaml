@@ -26,6 +26,18 @@ providers:
     rpd: 1000
     supports_tools: true
     supports_structured: true
+  # A second Groq key serving the larger model. It stands in for Cerebras, whose
+  # free allowance is gated behind billing, and gives the analyst role a rate-limit
+  # bucket of its own rather than sharing the executor's.
+  groq_alt:
+    kind: groq
+    model: openai/gpt-oss-120b
+    api_key_env: GROQ_API_KEY_2
+    context_tokens: 131072
+    rpm: 30
+    rpd: 1000
+    supports_tools: true
+    supports_structured: true
   cerebras:
     kind: cerebras
     model: gpt-oss-120b
@@ -56,11 +68,14 @@ providers:
     supports_tools: true
     supports_structured: false
 
+# Cerebras sits at the tail of every chain rather than being removed: it is only
+# reached if everything else is down, and it rejoins its old position by editing
+# these lists once billing is enabled on the account.
 roles:
-  coordinator: [gemini, openrouter, cerebras, groq]
-  researcher:  [openrouter, gemini, groq, cerebras]
-  analyst:     [cerebras, groq, openrouter, gemini]
-  executor:    [groq, cerebras, openrouter, gemini]
+  coordinator: [gemini, openrouter, groq_alt, groq, cerebras]
+  researcher:  [openrouter, gemini, groq, groq_alt, cerebras]
+  analyst:     [groq_alt, groq, openrouter, gemini, cerebras]
+  executor:    [groq, groq_alt, openrouter, gemini, cerebras]
 
 # Share of a provider's daily budget held back for the coordinator, so planning
 # and synthesis survive a busy run.

@@ -199,8 +199,9 @@ class TestFailover:
         r.force_error("gemini", core.RATE_LIMIT, retry_after=5)
 
         events = []
-        reply = await r.ainvoke("coordinator", [core.HumanMessage(content="hi")],
-                                on_event=events.append)
+        reply = await r.ainvoke(
+            "coordinator", [core.HumanMessage(content="hi")], on_event=events.append
+        )
 
         assert core.message_text(reply) == "ok"
         assert primary.state == "cooldown"
@@ -323,9 +324,12 @@ class TestQuotaReservation:
     async def test_reserved_budget_pushes_the_researcher_to_the_next_provider(self):
         gemini, groq = slot("gemini", rpd=10), slot("groq")
         gemini.calls_today = 9
-        r = router(gemini, groq,
-                   chains={"researcher": ["gemini", "groq"]},
-                   reservation={"gemini": {"coordinator": 0.6}})
+        r = router(
+            gemini,
+            groq,
+            chains={"researcher": ["gemini", "groq"]},
+            reservation={"gemini": {"coordinator": 0.6}},
+        )
 
         await r.ainvoke("researcher", [core.HumanMessage(content="hi")])
         assert groq.calls_today == 1
@@ -367,5 +371,11 @@ class TestDaySafety:
         s = slot("groq")
         status = s.status()
         assert set(status) == {
-            "name", "provider", "model", "state", "cooldown_until", "calls_today", "last_error"
+            "name",
+            "provider",
+            "model",
+            "state",
+            "cooldown_until",
+            "calls_today",
+            "last_error",
         }

@@ -75,3 +75,20 @@ reused by the next. With a fresh event loop per test that reuse raises "Event lo
 closed" partway through the run, and closing the clients between tests is worse because the
 cache is shared. The live module therefore runs on a single module-scoped loop, which is
 also how the application runs: one long-lived loop for the process.
+
+## D9 — A second Groq key stands in for Cerebras
+
+Cerebras authenticates but refuses inference until the account has billing enabled, which left
+the analyst role without its intended primary. Groq serves `openai/gpt-oss-120b`, the same model
+Cerebras was providing, so a second Groq key now leads the analyst chain. Two keys on one
+provider matter because rate limits are counted per key: the analyst gets its own bucket rather
+than competing with the executor for the first key's allowance. Cerebras stays defined and sits
+at the tail of every chain, so enabling billing restores it by editing the role lists alone.
+
+## D10 — Front matter that fails to parse is logged, not swallowed
+
+A knowledge file whose YAML header was invalid used to be indexed with no title and no source
+url, which produced passages that could be retrieved but not cited, with nothing explaining why.
+A title containing an unquoted colon caused exactly this and was only noticed because a test
+checked the committed files rather than the parser. Parse failures now log a warning and the
+body is still indexed.
