@@ -264,3 +264,44 @@ class TestAuth:
         core.clear_registry()
         core.reset_run_service()
         core.reset_settings_cache()
+
+
+def test_health_needs_no_credentials(client):
+    """A platform health check cannot present credentials, so this route is open."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["sectors"] >= 1
+
+
+def test_health_reveals_nothing_about_configuration(client):
+    """Being the one open route, it must not describe providers, keys, or settings."""
+    body = client.get("/health").json()
+    assert set(body) == {"status", "sectors"}
+
+
+def test_health_still_open_when_a_password_is_set(monkeypatch, tmp_path):
+    """Setting a password must lock the API without locking out the health check."""
+    monkeypatch.setenv("RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setenv("AUTOMATRON_FAKE_LLM", "1")
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "empty-data"))
+    monkeypatch.setenv("APP_USERNAME", "arnav")
+    monkeypatch.setenv("APP_PASSWORD", "a-test-password")
+    core.reset_settings_cache()
+    core.reset_rag_cache()
+    core.reset_run_service()
+    core.reset_rate_limits()
+    testsector.install()
+    try:
+        with TestClient(core.create_app()) as guarded:
+            assert guarded.get("/health").status_code == 200
+            assert guarded.get(f"{API}/sectors").status_code == 401
+            ok = guarded.get(f"{API}/sectors", auth=("arnav", "a-test-password"))
+            assert ok.status_code == 200
+    finally:
+        core.clear_fake_script()
+        core.clear_registry()
+        core.reset_run_service()
+        core.reset_rag_cache()
+        core.reset_settings_cache()

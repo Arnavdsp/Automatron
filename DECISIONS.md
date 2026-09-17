@@ -208,3 +208,13 @@ applied, so every ticket produced a concentration breach and the smallest sample
 demonstrate the fast-track path. Positions are now sized so the book starts inside every limit,
 which means a breach reported by the gate is caused by the ticket under review rather than by
 the fixture.
+
+## D24 — The health endpoint is unauthenticated and deliberately uninformative
+
+A container platform's health check cannot present credentials, so `/health` is the one route
+outside the basic-auth dependency. It returns only that the process is up and how many sectors
+registered: no provider state, no configuration, nothing about which keys are present. Basic
+auth is also skipped entirely when no password is configured, which is convenient locally and
+unsafe anywhere reachable, so the process now warns at startup when that is the case and the
+deploy workflow passes the password as a required secret, which fails the deploy rather than
+publishing an open service.
