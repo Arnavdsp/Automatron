@@ -1,0 +1,17 @@
+line-length = 100
+target-version = "py311"
+
+# Generated from the notebooks; its layout is nbconvert's, not ours.
+extend-exclude = ["automatron_build"]
+
+[lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[lint.isort]
+known-first-party = [
+    "automatron_core",
+    "automatron_space",
+    "automatron_quant",
+    "automatron_ecommerce",
+    "automatron_realestate",
+]
