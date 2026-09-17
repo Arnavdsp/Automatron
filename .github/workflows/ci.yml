@@ -8,7 +8,10 @@ on:
   workflow_call:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # github.workflow is the caller's name when this is reached through workflow_call,
+  # so a push to main does not put the standalone run and the deploy's copy of it in
+  # one group, where cancel-in-progress would kill the deploy's checks.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
