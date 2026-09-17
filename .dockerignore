@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.local
+tests/
+__pycache__
+*.py[cod]
+.ipynb_checkpoints
+automatron_build/
+.qdrant/
+*.sqlite
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
