@@ -1,0 +1,17 @@
+{
+  "project_name": "Birch Street addition (fictional)",
+  "zone_district": "R-1",
+  "use": "single_family_dwelling",
+  "lot_area_sqft": 6500,
+  "lot_width_ft": 62,
+  "front_setback_ft": 25,
+  "side_setback_ft": 5,
+  "rear_setback_ft": 20,
+  "height_ft": 30,
+  "stories": 2,
+  "gross_floor_area_sqft": 3250,
+  "building_footprint_sqft": 2600,
+  "dwelling_units": 1,
+  "parking_spaces": 2,
+  "note": "Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code."
+}

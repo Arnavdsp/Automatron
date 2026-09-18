@@ -1,0 +1,14 @@
+# The demo screens a project with one failing side setback, so the outcome is the
+# corrections level. A vocabulary term mentioned by the use table must not outrank it.
+workflow_id: realestate.permit_prescreen
+sector: realestate
+sample: project_r1_setback_violation
+request: Pre-screen this addition against the R-1 standards.
+expect:
+  level_in: [CORRECTIONS_LIKELY]
+  required_quant_keys: ["ratio", "count"]
+  min_findings: 3
+  must_mention_any: ["setback", "standard", "section", "SC-21"]
+  forbidden: ["permit is approved", "permit has been approved", "permit is denied",
+              "permit has been issued", "variance granted", "fully compliant"]
+  min_options: 2

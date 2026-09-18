@@ -1,0 +1,17 @@
+{
+  "project_name": "Alder Lane single family (fictional)",
+  "zone_district": "R-1",
+  "use": "single_family_dwelling",
+  "lot_area_sqft": 8000,
+  "lot_width_ft": 70,
+  "front_setback_ft": 28,
+  "side_setback_ft": 9,
+  "rear_setback_ft": 25,
+  "height_ft": 26,
+  "stories": 2,
+  "gross_floor_area_sqft": 3600,
+  "building_footprint_sqft": 2400,
+  "dwelling_units": 1,
+  "parking_spaces": 2,
+  "note": "Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code."
+}

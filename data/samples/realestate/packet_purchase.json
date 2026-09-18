@@ -1,0 +1,13 @@
+{
+  "property_address": "118 Alder Lane, Sample City (fictional)",
+  "deal_type": "purchase",
+  "intended_use": "build a detached garage in the rear yard",
+  "documents": [
+    "title_commitment",
+    "survey_notes",
+    "ccr",
+    "inspection_report",
+    "environmental_summary"
+  ],
+  "note": "Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code."
+}

@@ -1,0 +1,124 @@
+# Severity rubric for due-diligence findings. Invented for this project and
+# deliberately conservative: the point is to sort items for an attorney's attention,
+# never to decide whether an issue matters to a deal.
+
+disclaimer: >-
+  Severity sorts findings for review. It is not legal advice, it does not say whether
+  an issue is curable, and it says nothing about whether a transaction should proceed.
+  Local law and the specific documents govern, and a licensed attorney decides.
+
+levels: [high, medium, low, needs_info]
+
+# Each category maps to a base severity, with conditions that raise it. Raising is
+# always explained in the output so a reader sees why an item moved.
+categories:
+  lien_encumbrance:
+    base: medium
+    label: Lien or encumbrance
+    why_it_may_matter: >-
+      A recorded interest against the property that may need releasing before or at
+      closing.
+    escalate_to_high_when:
+      unreleased: An unreleased mortgage or lien of record.
+      tax_lien: A tax lien of any amount.
+    question: Ask the attorney whether this must be released at or before closing, and by whom.
+
+  easement:
+    base: medium
+    label: Easement
+    why_it_may_matter: >-
+      A right held by someone else to use part of the property, which can restrict
+      what is built and where.
+    escalate_to_high_when:
+      overlaps_intended_use: The easement area overlaps where the buyer intends to build.
+      blanket: A blanket easement with no defined location.
+    question: Ask whether the easement can be relocated or released, and who holds it.
+
+  restriction_ccr:
+    base: medium
+    label: Restriction or covenant
+    why_it_may_matter: >-
+      A private rule recorded against the property, often enforced by an association
+      rather than the city.
+    escalate_to_high_when:
+      prohibits_intended_use: The restriction appears to prohibit the stated intended use.
+    question: Ask who enforces this, and whether a variance or architectural approval exists.
+
+  encroachment:
+    base: high
+    label: Encroachment
+    why_it_may_matter: >-
+      Something sits across a boundary, which can affect title, insurance and the
+      buildable area.
+    question: Ask whether an agreement or survey endorsement exists, and who must cure it.
+
+  title_exception:
+    base: medium
+    label: Title exception
+    why_it_may_matter: An item the title policy would not cover as written.
+    escalate_to_high_when:
+      survey_exception: A general survey exception that a current survey might remove.
+    question: Ask whether this exception can be removed or insured over.
+
+  zoning_permit_note:
+    base: medium
+    label: Zoning or permit note
+    why_it_may_matter: >-
+      A note suggesting the existing structure or intended use may not match what was
+      permitted.
+    escalate_to_high_when:
+      unpermitted_work: Work appears to have been done without a permit.
+      nonconforming: The structure is described as nonconforming.
+    question: Ask whether records confirm permits were issued and finalled.
+
+  environmental:
+    base: high
+    label: Environmental
+    why_it_may_matter: >-
+      Environmental conditions can carry liability that survives closing and is
+      expensive to investigate.
+    question: Ask whether further assessment is warranted before proceeding.
+
+  lease_term:
+    base: medium
+    label: Lease term
+    why_it_may_matter: >-
+      Terms that bind a buyer after closing, or that affect income assumptions.
+    escalate_to_high_when:
+      no_estoppel: No tenant estoppel certificate is present.
+      assignment_restricted: Assignment or change of control is restricted.
+    question: Ask which terms survive closing and what estoppels are required.
+
+  inspection_defect:
+    base: low
+    label: Inspection item
+    why_it_may_matter: A physical condition that may need repair or price adjustment.
+    escalate_to_high_when:
+      structural: The item is described as structural.
+      safety: The item is described as a safety hazard.
+    escalate_to_medium_when:
+      major_system: The item concerns roof, foundation, electrical, plumbing or HVAC.
+    question: Ask whether a specialist evaluation is wanted before the contingency expires.
+
+  missing_document:
+    base: needs_info
+    label: Missing document
+    why_it_may_matter: >-
+      A document the review expected but did not receive, so nothing can be said
+      about what it contains.
+    question: Ask the seller or escrow to produce this document.
+
+# Documents a complete packet is expected to contain, per deal type. Anything absent
+# is reported as a gap rather than passed over in silence.
+# These names must match the document types the classifier reports, or a document
+# that was supplied is announced as missing.
+expected_documents:
+  purchase: [title_commitment, survey_notes, inspection_report, ccr, environmental_summary]
+  lease: [lease, ccr, inspection_report]
+  refinance: [title_commitment, survey_notes, lease]
+
+# Level thresholds for the workflow.
+levels_for_workflow:
+  high_severity_present: HIGH_SEVERITY_FLAGS
+  any_flag_present: FLAGS_FOR_ATTORNEY_REVIEW
+  none_present: NO_MAJOR_FLAGS_FOUND

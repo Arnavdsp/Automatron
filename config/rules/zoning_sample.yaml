@@ -1,0 +1,111 @@
+# Dimensional standards and use tables for a fictional "Sample City". Invented for
+# this project: no real jurisdiction's code is reproduced here. Section numbers are
+# made up so a brief can cite something, and every citation says so.
+
+jurisdiction: Sample City (fictional)
+code_note: >-
+  Invented standards for a fictional jurisdiction. Real zoning varies by city and
+  changes often, and overlays, variances and nonconforming rights can change the
+  answer entirely. A permit examiner decides; this is a pre-screen.
+
+districts:
+  R-1:
+    name: Single-family residential
+    section_prefix: SC-21
+    standards:
+      min_lot_area_sqft: {value: 6000, section: SC-21.10, comparison: at_least}
+      min_lot_width_ft: {value: 60, section: SC-21.11, comparison: at_least}
+      min_front_setback_ft: {value: 25, section: SC-21.20, comparison: at_least}
+      min_side_setback_ft: {value: 7, section: SC-21.21, comparison: at_least}
+      min_rear_setback_ft: {value: 20, section: SC-21.22, comparison: at_least}
+      max_height_ft: {value: 30, section: SC-21.30, comparison: at_most}
+      max_stories: {value: 2, section: SC-21.31, comparison: at_most}
+      max_lot_coverage_pct: {value: 40, section: SC-21.40, comparison: at_most}
+      max_floor_area_ratio: {value: 0.5, section: SC-21.41, comparison: at_most}
+      min_parking_spaces_per_unit: {value: 2, section: SC-21.50, comparison: at_least}
+    uses:
+      single_family_dwelling: permitted
+      accessory_dwelling_unit: conditional
+      detached_garage: permitted
+      home_occupation: conditional
+      duplex: not_permitted
+      retail: not_permitted
+      restaurant: not_permitted
+
+  R-2:
+    name: Two-family residential
+    section_prefix: SC-22
+    standards:
+      min_lot_area_sqft: {value: 8000, section: SC-22.10, comparison: at_least}
+      min_lot_width_ft: {value: 70, section: SC-22.11, comparison: at_least}
+      min_front_setback_ft: {value: 20, section: SC-22.20, comparison: at_least}
+      min_side_setback_ft: {value: 6, section: SC-22.21, comparison: at_least}
+      min_rear_setback_ft: {value: 18, section: SC-22.22, comparison: at_least}
+      max_height_ft: {value: 35, section: SC-22.30, comparison: at_most}
+      max_stories: {value: 3, section: SC-22.31, comparison: at_most}
+      max_lot_coverage_pct: {value: 45, section: SC-22.40, comparison: at_most}
+      max_floor_area_ratio: {value: 0.7, section: SC-22.41, comparison: at_most}
+      min_parking_spaces_per_unit: {value: 1.5, section: SC-22.50, comparison: at_least}
+    uses:
+      single_family_dwelling: permitted
+      duplex: permitted
+      accessory_dwelling_unit: permitted
+      detached_garage: permitted
+      home_occupation: conditional
+      retail: not_permitted
+
+  C-1:
+    name: Neighbourhood commercial
+    section_prefix: SC-31
+    standards:
+      min_lot_area_sqft: {value: 4000, section: SC-31.10, comparison: at_least}
+      min_lot_width_ft: {value: 40, section: SC-31.11, comparison: at_least}
+      min_front_setback_ft: {value: 0, section: SC-31.20, comparison: at_least}
+      min_side_setback_ft: {value: 0, section: SC-31.21, comparison: at_least}
+      min_rear_setback_ft: {value: 10, section: SC-31.22, comparison: at_least}
+      max_height_ft: {value: 45, section: SC-31.30, comparison: at_most}
+      max_stories: {value: 3, section: SC-31.31, comparison: at_most}
+      max_lot_coverage_pct: {value: 80, section: SC-31.40, comparison: at_most}
+      max_floor_area_ratio: {value: 2.0, section: SC-31.41, comparison: at_most}
+      min_parking_spaces_per_unit: {value: 0, section: SC-31.50, comparison: at_least}
+    uses:
+      retail: permitted
+      restaurant: conditional
+      office: permitted
+      single_family_dwelling: not_permitted
+      mixed_use_building: conditional
+      drive_through: not_permitted
+
+  MU-1:
+    name: Mixed use
+    section_prefix: SC-41
+    standards:
+      min_lot_area_sqft: {value: 5000, section: SC-41.10, comparison: at_least}
+      min_lot_width_ft: {value: 50, section: SC-41.11, comparison: at_least}
+      min_front_setback_ft: {value: 5, section: SC-41.20, comparison: at_least}
+      min_side_setback_ft: {value: 5, section: SC-41.21, comparison: at_least}
+      min_rear_setback_ft: {value: 15, section: SC-41.22, comparison: at_least}
+      max_height_ft: {value: 55, section: SC-41.30, comparison: at_most}
+      max_stories: {value: 4, section: SC-41.31, comparison: at_most}
+      max_lot_coverage_pct: {value: 70, section: SC-41.40, comparison: at_most}
+      max_floor_area_ratio: {value: 2.5, section: SC-41.41, comparison: at_most}
+      min_parking_spaces_per_unit: {value: 1, section: SC-41.50, comparison: at_least}
+    uses:
+      mixed_use_building: permitted
+      retail: permitted
+      office: permitted
+      restaurant: permitted
+      single_family_dwelling: conditional
+      duplex: permitted
+
+# How a use table answer maps onto the workflow's levels.
+use_outcomes:
+  permitted: READY_FOR_EXAMINER
+  conditional: HEARING_LIKELY
+  not_permitted: CORRECTIONS_LIKELY
+  unlisted: INCOMPLETE_SUBMISSION
+
+unlisted_note: >-
+  A use that does not appear in the district's table is not automatically refused.
+  Most codes have a procedure for deciding whether an unlisted use is similar to a
+  listed one, and that decision belongs to the examiner.

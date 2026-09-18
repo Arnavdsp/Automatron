@@ -1,0 +1,17 @@
+{
+  "project_name": "Cedar Row cafe (fictional)",
+  "zone_district": "C-1",
+  "use": "restaurant",
+  "lot_area_sqft": 5200,
+  "lot_width_ft": 45,
+  "front_setback_ft": 0,
+  "side_setback_ft": 0,
+  "rear_setback_ft": 12,
+  "height_ft": 32,
+  "stories": 2,
+  "gross_floor_area_sqft": 6000,
+  "building_footprint_sqft": 3000,
+  "dwelling_units": 1,
+  "parking_spaces": 6,
+  "note": "Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code."
+}

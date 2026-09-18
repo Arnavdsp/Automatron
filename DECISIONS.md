@@ -286,3 +286,41 @@ failing setback was presented as ready for the examiner. The level is now taken 
 a result that names itself "level", so the tool making the call decides, and a bare
 mention is only a fallback. A brief showing a level nothing decided is worse than no
 level at all, since the reader has no way to tell.
+
+## D32 — Findings are one per category per page, and headings are not findings
+
+Reading a document sentence by sentence produced several near-identical findings from
+one paragraph, and thirty rows buried the four that mattered. Findings are now
+collapsed to one per category per page, keeping the longest excerpt and counting the
+rest. Headings are dropped line by line before sentences are assembled: a title page
+carries the document's subject words, so an environmental report's letterhead was
+producing a finding about itself. Dropping headings after assembly does not work,
+because a title line glued to the mixed-case lines beneath it no longer looks like one.
+
+## D33 — A clause's category is scored, with the document breaking ties
+
+Taking the first category whose keyword appeared put a declaration's restriction under
+"easement" because the clause mentioned one, and put a title commitment's general
+survey exception under "encroachment" for the same reason. Categories are now scored by
+how many of their markers match, and a tie is broken by what the document mostly
+contains: a restriction in a declaration is a restriction. The document type also has
+to match the names in the expected-documents list, or a document that was supplied is
+announced as missing.
+
+## D34 — Zoning comparisons treat equal as compliant
+
+Dimensional standards are written as "not less than" and "not more than", so a value
+exactly on its limit complies. One bundled project sits exactly on four limits at once
+while failing a fifth by two feet, so an off-by-one comparison fails the tests rather
+than quietly failing a compliant project. Sections are invented and belong to a
+fictional city, and every row reports the required value, the proposed value and the
+section it came from so an examiner can redo the arithmetic.
+
+## D35 — Notice periods are placeholders and are labelled on every date
+
+Notice periods differ by agreement and jurisdiction and are among the most
+jurisdiction-specific numbers in the sector. The rules file carries invented periods so
+the workflow can compute a date and show its arithmetic, and every computed date is
+returned carrying the words "placeholder — confirm local law". Eviction, apparent
+threats and apparent discriminatory language escalate to counsel regardless of anything
+else in the record, because those are not calls this should be making.

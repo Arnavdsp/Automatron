@@ -1,0 +1,41 @@
+[Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code.]
+
+=== PAGE 1 ===
+SAMPLE TITLE INSURANCE COMPANY (fictional)
+COMMITMENT FOR TITLE INSURANCE
+File No. STC-2026-00418
+Property: 118 Alder Lane, Sample City (fictional)
+Effective Date: 2026-04-02
+Proposed Insured: Sample Buyer LLC (fictional)
+
+This commitment is an invented document prepared to illustrate a review workflow.
+
+=== PAGE 2 ===
+SCHEDULE A
+1. Policy to be issued: Owner's Policy, amount 615,000.00
+2. Estate or interest: Fee simple
+3. Title is vested in: Sample Seller Trust (fictional)
+4. The land is described in Exhibit A.
+
+=== PAGE 3 ===
+SCHEDULE B - PART I - REQUIREMENTS
+1. Pay the agreed amounts for the interest to be insured.
+2. Release of the unreleased mortgage recorded in Book 4412, Page 208, in favor of
+   Harbour Savings Bank (fictional), original amount 214,000.00. No satisfaction of
+   this mortgage appears of record.
+3. Payment of all taxes due and payable.
+
+=== PAGE 4 ===
+SCHEDULE B - PART II - EXCEPTIONS
+1. A ten (10) foot wide utility easement along the entire rear property line,
+   recorded in Book 2201, Page 77, in favor of Sample City Utilities (fictional),
+   for the installation and maintenance of underground utilities.
+2. Covenants, conditions and restrictions recorded in Book 3010, Page 145.
+3. General exception: any encroachment, encumbrance, violation or adverse
+   circumstance that an accurate and complete land survey would disclose.
+4. Rights of tenants in possession under any unrecorded lease.
+
+=== PAGE 5 ===
+EXHIBIT A - LEGAL DESCRIPTION
+Lot 14, Block 6, Alderwood Addition to Sample City (fictional), according to the
+plat recorded in Plat Book 12, Page 3.

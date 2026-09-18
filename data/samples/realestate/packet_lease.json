@@ -1,0 +1,10 @@
+{
+  "property_address": "118 Alder Lane, Unit B, Sample City (fictional)",
+  "deal_type": "lease",
+  "intended_use": "operate a small home bakery from the unit",
+  "documents": [
+    "lease",
+    "ccr"
+  ],
+  "note": "Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code."
+}
