@@ -66,6 +66,18 @@ jobs:
           sys.exit(1 if problems else 0)
           PY
 
+      - name: dependency audit
+        run: |
+          # PYSEC-2026-3740 (nltk) is a file-sandbox bypass in its model save and load
+          # APIs: TransitionParser, AveragedPerceptron, PerceptronTagger and
+          # save_maxent_params. nltk arrives transitively through llama-index-core,
+          # which uses only its tokenizer, stopwords and data paths; none of the
+          # affected APIs appear in llama_index or in this project, and nothing here
+          # passes a caller-controlled model path. No fixed version is published.
+          # Re-check on every dependency bump and drop the ignore when a fix ships.
+          # --strict means any other advisory, including a new one here, fails the build.
+          pip-audit --strict --ignore-vuln PYSEC-2026-3740
+
       - name: tests
         run: pytest -q
 
