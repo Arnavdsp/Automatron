@@ -265,3 +265,12 @@ does not state one, the tool falls back to a configured default and says so in t
 result, because missing the real deadline forfeits the dispute however strong the
 packet is. The same reasoning applies to the evidence lists: they are generic
 categories, and every result repeats that the processor is the authority.
+
+## D30 — The brief's number table judges a key by its words
+
+The extractor matched key names as substrings, so `account_opened` and `discount_code`
+both counted as measurements because each contains "count", and the values beside them
+were dates, which passed a loose numeric pattern because of their hyphens. A date then
+appeared in a brief's quantitative table as though it were a measured quantity. Keys
+are now split into words and matched against a vocabulary, and date-shaped strings are
+excluded before the numeric test rather than after.
