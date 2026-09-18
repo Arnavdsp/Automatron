@@ -274,3 +274,15 @@ were dates, which passed a loose numeric pattern because of their hyphens. A dat
 appeared in a brief's quantitative table as though it were a measured quantity. Keys
 are now split into words and matched against a vocabulary, and date-shaped strings are
 excluded before the numeric test rather than after.
+
+## D31 — The level on a brief is the one a tool decided, not one merely mentioned
+
+Choosing the recommendation level by scanning a run's results for the first term in
+the workflow's vocabulary worked only while a single tool ever produced one. The
+permit pre-screen has two: the use table reports the level its answer would suggest
+on its own, and the outcome tool reports the level the whole screen reached. Because
+the use table's suggestion happened to be first in the vocabulary, a project with a
+failing setback was presented as ready for the examiner. The level is now taken from
+a result that names itself "level", so the tool making the call decides, and a bare
+mention is only a fallback. A brief showing a level nothing decided is worse than no
+level at all, since the reader has no way to tell.
