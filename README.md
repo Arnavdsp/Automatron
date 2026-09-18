@@ -151,6 +151,18 @@ largest tracked file is a 584 KB CSV, so Git LFS is not used. If a future sample
 pushes the repository past what plain git accepts, track that file with LFS rather
 than adding LFS across the board.
 
+### After a deploy
+
+```bash
+python tests/deploy_smoke.py https://<service-url> --password "$APP_PASSWORD"
+```
+
+Read-only: it starts no runs. It checks that the liveness probe answers without
+credentials, that all four sectors registered, that the service is running against
+real providers rather than the fake model, that the API refuses an anonymous caller,
+and that at least one provider slot is usable. It exits non-zero on the first failure,
+so it can gate a release.
+
 ### Cloud Run: one-time setup
 
 Authentication uses workload identity federation, so no service account key is ever stored
