@@ -227,3 +227,41 @@ service account key, so nothing long-lived is stored in the repository's secrets
 mints a short-lived token per run. After the revision is live the workflow polls the health
 endpoint, allowing for this image's cold start, and fails the deploy if the new revision never
 answers.
+
+## D26 — Claim photos are generated shapes, and the match threshold was measured
+
+The bundled claim images are coloured rectangles drawn from a fixed seed, not
+photographs of anything, so nothing here depends on redistributing a real image. The
+distance at which two files count as the same picture was measured rather than
+assumed: across the bundled set, the same image re-saved, recompressed or rescaled
+lands between 0 and 6, while different images land at 20 or more. Ten sits in the
+empty gap. Real photographs would narrow that gap, so the tool reports the measured
+distance alongside the verdict and the threshold is configuration rather than a
+constant in code.
+
+## D27 — Personal data is masked at the tool boundary
+
+The core redaction pass already masks logs and rendered output. The e-commerce tools
+mask before returning instead, so a full email address, phone number, card number or
+street address never enters a step result, an evidence entry or a brief at all.
+Masking after the fact would be one missed code path away from a leak, and the brief
+is the artefact most likely to be copied elsewhere. A test sweeps every dispute tool's
+output against every contact detail in the sample files.
+
+## D28 — Every risk factor carries the innocent reading of the same observation
+
+The scoring rules file records, for each factor, an ordinary explanation for the
+behaviour it fires on: a new account can simply be new, a high return rate is normal
+in apparel, urgency is what a person sounds like when a delivery has genuinely failed.
+The tool returns that explanation next to the weight whenever the factor contributes,
+so the brief cannot present a signal without its counter-reading. The score routes a
+claim to a reviewer and never decides it, which is why the fast-track level still
+stops at the approval gate.
+
+## D29 — An assumed chargeback deadline is labelled as assumed
+
+Response windows differ by network, processor and merchant agreement. When a notice
+does not state one, the tool falls back to a configured default and says so in the
+result, because missing the real deadline forfeits the dispute however strong the
+packet is. The same reasoning applies to the evidence lists: they are generic
+categories, and every result repeats that the processor is the authority.

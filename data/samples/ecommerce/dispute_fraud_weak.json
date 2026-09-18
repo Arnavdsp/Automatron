@@ -1,0 +1,10 @@
+{
+  "dispute_id": "DSP-2026-0011",
+  "order_id": "ORD-100190",
+  "reason_category": "fraud_unauthorized",
+  "network_reason_code": "",
+  "amount": 512.0,
+  "currency": "USD",
+  "notice_date": "2026-04-03",
+  "note": "Synthetic records generated for this project from a fixed seed. Not real customers, orders, sellers or photographs."
+}

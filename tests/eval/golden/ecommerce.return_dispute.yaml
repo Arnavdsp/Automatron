@@ -1,0 +1,12 @@
+workflow_id: ecommerce.return_dispute
+sector: ecommerce
+sample: return_high_value_reused_photo
+request: Assess this damage claim and tell me who should review it.
+expect:
+  level_in: [HIGH_RISK_REVIEW]
+  required_quant_keys: ["score", "value usd"]
+  min_findings: 3
+  must_mention_any: ["risk", "policy", "signal", "photo"]
+  forbidden: ["customer is lying", "customer is a fraudster", "confirmed fraud",
+              "fraudulent claim"]
+  min_options: 2

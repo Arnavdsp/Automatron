@@ -1,0 +1,10 @@
+{
+  "seller_id": "SEL-2001",
+  "violation_type": "ip_complaint",
+  "sku": "NL-HP-300",
+  "appeal_letter": "Appeal regarding the removal of listing NL-HP-300.\n\nRoot cause: we listed stock from a new distributor without attaching the\nauthorisation letter to the listing, so the rights owner had no way to verify our\nsource and filed a complaint.\n\nCorrective action: we have attached the distributor invoice HD-2026-4471 from\nHarbour Distribution Ltd and the brand authorisation letter to the listing record.\n\nPreventive measures: from this month no listing in this brand goes live until the\nauthorisation document is attached, and we have added a weekly check on the four\nlistings in this category.\n\nEvidence: invoice HD-2026-4471 dated 6 January 2026 for 200 units, against 180\nunits sold since 20 January 2026.\n\nWe would be grateful for reinstatement once you have reviewed the documents.\n",
+  "documents": [
+    "invoices/invoice_strong.txt"
+  ],
+  "note": "Synthetic records generated for this project from a fixed seed. Not real customers, orders, sellers or photographs."
+}

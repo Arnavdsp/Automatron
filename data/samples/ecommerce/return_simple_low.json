@@ -1,0 +1,11 @@
+{
+  "order_id": "ORD-100042",
+  "claim_type": "damaged",
+  "claim_text": "One sleeve arrived with a tear near the cuff. Photos attached.",
+  "chat_transcript": "Customer: Hello, the overshirt arrived with a tear on the left sleeve.\nAgent: I am sorry about that. Could you send a photo of the item and the packaging?\nCustomer: Just sent both. Happy with a replacement if that is easier.\nAgent: Thank you, I will pass this to the returns team.",
+  "photos": [
+    "photos/claim_042_item.png",
+    "photos/claim_042_packaging.png"
+  ],
+  "note": "Synthetic records generated for this project from a fixed seed. Not real customers, orders, sellers or photographs."
+}

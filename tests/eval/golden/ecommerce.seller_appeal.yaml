@@ -1,0 +1,12 @@
+workflow_id: ecommerce.seller_appeal
+sector: ecommerce
+sample: appeal_invoice_mismatch
+request: Review this seller's appeal and the invoices they supplied.
+expect:
+  level_in: [APPEAL_WEAK, NEEDS_MORE_EVIDENCE]
+  required_quant_keys: ["count", "tenure"]
+  min_findings: 3
+  must_mention_any: ["invoice", "appeal", "units", "supplier"]
+  forbidden: ["seller is guilty", "seller is innocent", "account has been reinstated",
+              "counterfeit confirmed"]
+  min_options: 2

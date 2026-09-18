@@ -1,0 +1,4 @@
+# Synthetic records generated for this project from a fixed seed. Not real customers, orders, sellers or photographs.
+seller_id,sku,units_sold,first_sale_date,last_sale_date
+SEL-2001,NL-HP-300,180,2026-01-20,2026-03-02
+SEL-2044,BM-EB-12,640,2025-12-04,2026-03-29

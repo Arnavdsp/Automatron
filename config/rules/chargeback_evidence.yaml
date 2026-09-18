@@ -1,0 +1,91 @@
+# Evidence types a representment packet is built from, per dispute reason.
+# Generic categories only: card network rules differ by network, change often, and
+# are not reproduced here. Anything network-specific belongs in the knowledge base
+# with a source, and the processor is the authority either way.
+
+disclaimer: >-
+  Generic evidence categories, not card network rules. Deadlines and accepted
+  evidence differ by network, by processor, and by merchant agreement. Confirm
+  both with your processor before submitting anything.
+
+# Used when the notice does not state a response window.
+default_response_window_days: 14
+deadline_note: >-
+  Assumed from the configured default because the notice did not state a window.
+  Confirm the real deadline with your processor; missing it forfeits the dispute
+  regardless of how strong the packet is.
+
+# Weights decide the completeness score: the share of available weight that the
+# gathered evidence covers.
+categories:
+  fraud_unauthorized:
+    description: The cardholder says they did not authorise the transaction.
+    required:
+      avs_result: {weight: 10, label: Address verification result}
+      cvv_result: {weight: 10, label: Card security code result}
+      device_ip_match: {weight: 15, label: Device or IP matching earlier undisputed orders}
+      delivery_confirmation: {weight: 20, label: Carrier delivery confirmation}
+      customer_communications: {weight: 10, label: Messages with the cardholder}
+    helpful:
+      three_ds_flag: {weight: 15, label: Authentication result for the transaction}
+      prior_order_history: {weight: 10, label: Earlier undisputed orders on the same card}
+      terms_acceptance: {weight: 5, label: Record of terms acceptance}
+
+  not_received:
+    description: The cardholder says the goods never arrived.
+    required:
+      tracking_number: {weight: 15, label: Carrier tracking reference}
+      carrier_events: {weight: 20, label: Carrier scan history}
+      delivery_confirmation: {weight: 25, label: Proof of delivery}
+      shipping_address_match: {weight: 10, label: Ship-to matching the billing address}
+    helpful:
+      customer_communications: {weight: 10, label: Messages about the delivery}
+      signature_or_photo: {weight: 15, label: Signature or delivery photo}
+
+  not_as_described:
+    description: The cardholder says the goods differed from the listing.
+    required:
+      listing_snapshot: {weight: 20, label: The listing as it stood at purchase}
+      item_specification: {weight: 15, label: Specification or condition record}
+      customer_communications: {weight: 15, label: Messages about the complaint}
+      return_policy_acceptance: {weight: 10, label: Return policy shown at checkout}
+    helpful:
+      photos_before_dispatch: {weight: 15, label: Photographs taken before dispatch}
+      refund_history: {weight: 10, label: Any refund already issued}
+
+  duplicate_processing:
+    description: The cardholder says they were charged twice for one purchase.
+    required:
+      transaction_records: {weight: 30, label: Both transaction records with identifiers}
+      order_records: {weight: 25, label: Order records showing two distinct purchases}
+    helpful:
+      refund_history: {weight: 20, label: Evidence of any refund already issued}
+      customer_communications: {weight: 10, label: Messages about the charges}
+
+  cancelled_recurring:
+    description: The cardholder says a recurring charge continued after cancellation.
+    required:
+      subscription_record: {weight: 25, label: Subscription start and status history}
+      cancellation_policy: {weight: 15, label: The cancellation terms accepted}
+      cancellation_request_log: {weight: 25, label: Whether and when cancellation was requested}
+    helpful:
+      usage_after_cancellation: {weight: 15, label: Service use after the claimed cancellation}
+      customer_communications: {weight: 10, label: Messages about the cancellation}
+
+  credit_not_processed:
+    description: The cardholder says a promised refund never arrived.
+    required:
+      refund_history: {weight: 30, label: Refund records with dates and amounts}
+      return_receipt: {weight: 20, label: Evidence the goods came back, if applicable}
+    helpful:
+      customer_communications: {weight: 15, label: Messages about the refund}
+      refund_policy: {weight: 10, label: The refund terms accepted}
+
+# Completeness bands, and the likelihood band each maps onto before signals adjust
+# it. Heuristic, and labelled as such wherever it is shown.
+bands:
+  strong_at_or_above: 0.75
+  weak_below: 0.45
+likelihood_note: >-
+  A rule-based band from evidence completeness, not a prediction and not a
+  probability. Outcomes depend on the network, the issuer, and the reason code.

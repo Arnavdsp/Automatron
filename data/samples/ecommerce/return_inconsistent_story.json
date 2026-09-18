@@ -1,0 +1,10 @@
+{
+  "order_id": "ORD-100077",
+  "claim_type": "not_as_described",
+  "claim_text": "The mesh router I ordered is the wrong model and arrived last week.",
+  "chat_transcript": "Customer: The mesh router is not the model shown on the listing.\nAgent: Could I check the order? I have a portable monitor on this order.\nCustomer: It arrived on the 2nd of April and it is the wrong one.\nAgent: The record shows delivery on a different date. Could you send a photo of the item you received?\nCustomer: I do not have one to hand. Please escalate this to a supervisor, this is urgent.",
+  "photos": [
+    "photos/claim_077_screen.png"
+  ],
+  "note": "Synthetic records generated for this project from a fixed seed. Not real customers, orders, sellers or photographs."
+}
