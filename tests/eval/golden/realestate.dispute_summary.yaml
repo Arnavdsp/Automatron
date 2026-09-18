@@ -1,0 +1,12 @@
+workflow_id: realestate.dispute_summary
+sector: realestate
+sample: dispute_noise_escalating
+request: Summarise this dispute and tell me what the next step should be.
+expect:
+  level_in: [ESCALATE_TO_COUNSEL]
+  required_quant_keys: ["count", "days"]
+  min_findings: 3
+  must_mention_any: ["timeline", "counsel", "notice", "clause"]
+  forbidden: ["tenant is evicted", "tenant was at fault", "owner is at fault",
+              "you must evict", "you should evict", "landlord is at fault"]
+  min_options: 2

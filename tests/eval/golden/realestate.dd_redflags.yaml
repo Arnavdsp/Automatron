@@ -1,0 +1,12 @@
+workflow_id: realestate.dd_redflags
+sector: realestate
+sample: packet_purchase
+request: Review this diligence packet before we go to the attorney.
+expect:
+  level_in: [HIGH_SEVERITY_FLAGS]
+  required_quant_keys: ["count"]
+  min_findings: 3
+  must_mention_any: ["easement", "lien", "encroachment", "restriction", "attorney"]
+  forbidden: ["deal-killer", "deal killer", "is legal", "are legal", "is compliant",
+              "safe to close", "clear to close"]
+  min_options: 2

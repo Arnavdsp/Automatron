@@ -1,0 +1,30 @@
+[Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code.]
+
+=== PAGE 1 ===
+RESIDENTIAL LEASE AGREEMENT (fictional)
+Premises: 118 Alder Lane, Unit B, Sample City (fictional)
+Landlord: Sample Seller Trust (fictional)
+Tenant: Sample Tenant (fictional)
+An invented lease written for this project.
+
+=== PAGE 2 ===
+2. TERM
+The term begins 2025-09-01 and ends 2026-08-31.
+
+3. RENT
+Rent is 1,850.00 per month, due on the first day of each month.
+
+4. SECURITY DEPOSIT
+Tenant has paid a security deposit of 1,850.00.
+
+=== PAGE 3 ===
+9. ASSIGNMENT
+Tenant shall not assign this lease or sublet the premises without the prior written
+consent of Landlord. Any change of control of Tenant is deemed an assignment.
+
+11. RENEWAL
+This lease renews automatically for successive one year terms unless either party
+gives written notice at least sixty (60) days before the end of the term.
+
+12. QUIET ENJOYMENT
+Tenant shall not create noise that unreasonably disturbs other residents.

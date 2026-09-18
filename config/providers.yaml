@@ -2,6 +2,18 @@
 # Client-side pacing values (rpm/rpd) are conservative starting points taken from
 # each provider's published free-tier limits, not guarantees. Providers whose key
 # is missing are dropped from every chain at startup.
+#
+# Observed in a live evaluation, and left as they are deliberately:
+#   - Gemini reported its daily allowance exhausted after far fewer requests than
+#     the rpd below, so the client-side cap is not what protects it. The daily_quota
+#     classification parks the slot until UTC midnight, which is what actually
+#     handles it, and lowering rpd to a guessed number would only retire a working
+#     provider earlier. It stays the coordinator's first choice: fast while it
+#     lasts, failed over when it does not.
+#   - Groq and its second key answered 429 under load and backed off as intended.
+#   - OpenRouter's free models queue rather than refuse; single calls were seen
+#     taking over four minutes. No rpm value prevents that, which is why the run
+#     ceiling (RUN_TIMEOUT_S) allows for it instead.
 providers:
   gemini:
     kind: google_genai

@@ -1,0 +1,20 @@
+{
+  "dispute_type": "noise",
+  "jurisdiction": "Sample City (fictional)",
+  "parties": [
+    {
+      "name": "Sample Tenant",
+      "role": "tenant"
+    },
+    {
+      "name": "Sample Manager",
+      "role": "property_manager"
+    }
+  ],
+  "complaint_text": "The manager has sent increasingly hostile messages about noise from my unit and has threatened to change the locks and shut off the water if I do not move out.",
+  "correspondence": "2026-04-02 - Manager to Tenant: We have received noise complaints about your unit after 11pm. Please keep noise down.\n2026-04-09 - Manager to Tenant: Final notice. This is your last warning.\n2026-04-18 - Manager to Tenant: If you do not move out by the end of the month I will change the locks and shut off the water. People like you always cause trouble in this building.\n2026-04-19 - Tenant to Manager: I am asking you to put any notice in writing through the proper process. I have contacted a lawyer.\n",
+  "documents": [
+    "lease"
+  ],
+  "note": "Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code."
+}

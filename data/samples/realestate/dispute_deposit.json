@@ -1,0 +1,20 @@
+{
+  "dispute_type": "deposit",
+  "jurisdiction": "Sample City (fictional)",
+  "parties": [
+    {
+      "name": "Sample Tenant",
+      "role": "tenant"
+    },
+    {
+      "name": "Sample Seller Trust (fictional)",
+      "role": "landlord"
+    }
+  ],
+  "complaint_text": "I moved out on 1 March and have not received my deposit or an itemised statement. The landlord says there was carpet damage but has not sent photographs or receipts.",
+  "correspondence": "2026-03-01 - Tenant to Landlord: Keys returned, forwarding address provided.\n2026-03-20 - Tenant to Landlord: Following up on the security deposit.\n2026-03-27 - Landlord to Tenant: There was damage to the carpet in the second bedroom. We are still obtaining a quote.\n2026-04-14 - Tenant to Landlord: It has now been six weeks. Please send an itemised statement or return the deposit. I am considering small claims court.\n",
+  "documents": [
+    "lease"
+  ],
+  "note": "Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code."
+}

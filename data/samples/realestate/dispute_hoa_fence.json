@@ -1,0 +1,20 @@
+{
+  "dispute_type": "hoa_rule",
+  "jurisdiction": "Sample City (fictional)",
+  "parties": [
+    {
+      "name": "Sample Owner",
+      "role": "owner"
+    },
+    {
+      "name": "Alderwood HOA (fictional)",
+      "role": "association"
+    }
+  ],
+  "complaint_text": "The association says my rear fence was built without architectural approval and has asked me to remove it. I submitted plans by email before building and did not hear back for six weeks, so I went ahead.",
+  "correspondence": "2026-02-10 - Owner to HOA: Submitting plans for a 6 foot rear fence for architectural review.\n2026-03-24 - HOA to Owner: Notice of violation. The fence at the rear of the property was installed without written approval as required by Article IV.\n2026-03-28 - Owner to HOA: I submitted plans on 10 February and received no response. I am requesting a hearing.\n2026-04-02 - HOA to Owner: Your hearing request is acknowledged. The committee will consider this at its next meeting.\n",
+  "documents": [
+    "ccr"
+  ],
+  "note": "Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code."
+}

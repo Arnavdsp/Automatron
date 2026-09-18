@@ -1,0 +1,28 @@
+[Invented documents written for this project. Not a real title commitment, survey, lease, inspection report or municipal code.]
+
+=== PAGE 1 ===
+SAMPLE HOME INSPECTIONS (fictional)
+INSPECTION REPORT
+Property: 118 Alder Lane, Sample City (fictional)
+Inspection date: 2026-04-08
+This is an invented report.
+
+=== PAGE 2 ===
+ROOF
+The asphalt shingle roof shows granule loss and two areas of cupping on the south
+slope. Estimated remaining service life is three to five years. This is a major
+system item and further evaluation by a roofing contractor is recommended.
+
+HVAC
+The furnace is a 2004 unit at the end of its typical service life. The heat
+exchanger could not be fully inspected. This is a major system item.
+
+=== PAGE 3 ===
+ELECTRICAL
+The panel is modern and no deficiencies were observed.
+
+INTERIOR
+A cracked tile was noted in the upstairs bathroom. This is a minor cosmetic item.
+
+EXTERIOR
+The rear gate latch is broken. Minor item.

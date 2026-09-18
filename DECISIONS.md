@@ -274,3 +274,84 @@ were dates, which passed a loose numeric pattern because of their hyphens. A dat
 appeared in a brief's quantitative table as though it were a measured quantity. Keys
 are now split into words and matched against a vocabulary, and date-shaped strings are
 excluded before the numeric test rather than after.
+
+## D31 — The level on a brief is the one a tool decided, not one merely mentioned
+
+Choosing the recommendation level by scanning a run's results for the first term in
+the workflow's vocabulary worked only while a single tool ever produced one. The
+permit pre-screen has two: the use table reports the level its answer would suggest
+on its own, and the outcome tool reports the level the whole screen reached. Because
+the use table's suggestion happened to be first in the vocabulary, a project with a
+failing setback was presented as ready for the examiner. The level is now taken from
+a result that names itself "level", so the tool making the call decides, and a bare
+mention is only a fallback. A brief showing a level nothing decided is worse than no
+level at all, since the reader has no way to tell.
+
+## D32 — Findings are one per category per page, and headings are not findings
+
+Reading a document sentence by sentence produced several near-identical findings from
+one paragraph, and thirty rows buried the four that mattered. Findings are now
+collapsed to one per category per page, keeping the longest excerpt and counting the
+rest. Headings are dropped line by line before sentences are assembled: a title page
+carries the document's subject words, so an environmental report's letterhead was
+producing a finding about itself. Dropping headings after assembly does not work,
+because a title line glued to the mixed-case lines beneath it no longer looks like one.
+
+## D33 — A clause's category is scored, with the document breaking ties
+
+Taking the first category whose keyword appeared put a declaration's restriction under
+"easement" because the clause mentioned one, and put a title commitment's general
+survey exception under "encroachment" for the same reason. Categories are now scored by
+how many of their markers match, and a tie is broken by what the document mostly
+contains: a restriction in a declaration is a restriction. The document type also has
+to match the names in the expected-documents list, or a document that was supplied is
+announced as missing.
+
+## D34 — Zoning comparisons treat equal as compliant
+
+Dimensional standards are written as "not less than" and "not more than", so a value
+exactly on its limit complies. One bundled project sits exactly on four limits at once
+while failing a fifth by two feet, so an off-by-one comparison fails the tests rather
+than quietly failing a compliant project. Sections are invented and belong to a
+fictional city, and every row reports the required value, the proposed value and the
+section it came from so an examiner can redo the arithmetic.
+
+## D35 — Notice periods are placeholders and are labelled on every date
+
+Notice periods differ by agreement and jurisdiction and are among the most
+jurisdiction-specific numbers in the sector. The rules file carries invented periods so
+the workflow can compute a date and show its arithmetic, and every computed date is
+returned carrying the words "placeholder — confirm local law". Eviction, apparent
+threats and apparent discriminatory language escalate to counsel regardless of anything
+else in the record, because those are not calls this should be making.
+
+## D36 — A run's ceiling allows for a queueing provider, not a healthy one
+
+The first live evaluation failed two workflows, both by exceeding the 300 second run
+ceiling. The logs showed why: free provider tiers queue rather than refuse, and single
+calls were observed taking 258 and 229 seconds while the run produced no output at
+all. Forcing every one of the eleven slots to fail offline showed the degradation path
+itself is sound — the run still finished in 43 seconds with a brief marked low
+confidence — so the ceiling, not the failover, was what ended those runs. It is now a
+setting, `RUN_TIMEOUT_S`, defaulting to 600 seconds, and a timeout records which steps
+had completed: a run that stalled on its first call and one that was nearly finished
+need different answers, and "exceeded the time limit" does not tell them apart.
+
+## D37 — An unclassified provider failure keeps the provider's own words
+
+Provider failures were logged with the provider, the model and the classification, but
+not the error text. Since `other` is the catch-all, the one case with nothing to
+diagnose it from was the case that most needed it: a live run produced four `other`
+classifications that could not be told apart afterwards. The detail is now logged,
+passed through the same redaction as everything else, because provider errors
+sometimes quote the key back.
+
+## D38 — No Git LFS for the bundled samples
+
+The deployment notes warn that a Space may reject binaries pushed through plain git.
+The repository's binaries are seven generated PNGs of roughly a kilobyte each, and the
+largest tracked file of any kind is a 584 KB CSV, so nothing approaches that limit.
+Tracking them through LFS would add a second thing that has to succeed on every clone
+and push, and a lane that does not serve LFS objects would then fail where plain git
+works. If a future sample ever pushes the repository past what plain git accepts, that
+one file gets tracked rather than the whole pattern.

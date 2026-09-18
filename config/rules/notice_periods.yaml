@@ -1,0 +1,77 @@
+# Placeholder notice periods for the dispute workflow. These are NOT law. They exist
+# so the workflow can compute a date and show its arithmetic; the real period comes
+# from the lease, the association's rules, and local law, which vary widely.
+
+disclaimer: >-
+  Placeholder periods — confirm local law. These numbers are invented for this
+  project and are not the notice periods of any jurisdiction. Every date computed
+  from them is illustrative arithmetic, not a deadline to rely on. A lawyer or the
+  relevant authority confirms the real period.
+
+default_period_days: 14
+
+periods:
+  lease_violation:
+    cure_notice_days: 14
+    response_days: 7
+    note: Period to cure a claimed breach before further steps.
+  hoa_rule:
+    cure_notice_days: 30
+    hearing_request_days: 14
+    note: Associations commonly allow a hearing request; check the governing documents.
+  maintenance:
+    reasonable_response_days: 14
+    emergency_response_days: 1
+    note: Habitability timelines differ sharply by jurisdiction.
+  deposit:
+    return_or_itemize_days: 21
+    dispute_response_days: 14
+    note: Deposit return periods are among the most jurisdiction-specific of all.
+  noise:
+    cure_notice_days: 10
+    response_days: 7
+    note: Often handled first through the association or building management.
+  eviction_related:
+    cure_notice_days: 3
+    note: >-
+      Eviction procedure is set by statute and court rule. This number is a
+      placeholder only, and eviction is always escalated to counsel.
+
+# Signals that force escalation regardless of anything else.
+always_escalate:
+  dispute_types: [eviction_related]
+  signal_kinds: [threat, discrimination]
+  reason: >-
+    Eviction is decided by a court or an authorised body, and threats or apparent
+    discriminatory language need counsel or a fair-housing review rather than a
+    summary.
+
+# Wording that triggers a tone flag. Matching on phrasing is crude, so each flag is
+# a prompt to read the correspondence rather than a conclusion about anyone.
+tone_markers:
+  threat:
+    - "i will make you"
+    - "you will regret"
+    - "or else"
+    - "get out or"
+    - "lock you out"
+    - "shut off"
+    - "cut off the water"
+    - "change the locks"
+    - "throw your things"
+  discrimination:
+    - "people like you"
+    - "your kind"
+    - "no children"
+    - "we don't rent to"
+    - "too many kids"
+    - "because of your religion"
+    - "go back to"
+  escalation:
+    - "lawyer"
+    - "attorney"
+    - "court"
+    - "sue"
+    - "small claims"
+    - "final notice"
+    - "last warning"

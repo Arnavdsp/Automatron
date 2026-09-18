@@ -36,11 +36,19 @@ def score(scenario: dict, view, core) -> list[tuple[str, bool, str]]:
     brief = view.brief or {}
     checks: list[tuple[str, bool, str]] = []
 
+    # A run that never produced a brief is a failed run, not a malformed brief.
+    # Validating an empty dict reports every required field as missing, which hides
+    # the thing that actually went wrong.
+    if not brief:
+        errors = "; ".join(view.errors or []) or "no error recorded"
+        checks.append(("run", False, f"status {view.status}, no brief: {errors}"[:160]))
+        return checks
+
     try:
         core.DecisionBrief.model_validate(brief)
         checks.append(("schema", True, ""))
     except Exception as exc:
-        checks.append(("schema", False, str(exc)[:80]))
+        checks.append(("schema", False, str(exc)[:160]))
         return checks
 
     level = brief.get("recommendation_level")
