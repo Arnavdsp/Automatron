@@ -345,3 +345,13 @@ diagnose it from was the case that most needed it: a live run produced four `oth
 classifications that could not be told apart afterwards. The detail is now logged,
 passed through the same redaction as everything else, because provider errors
 sometimes quote the key back.
+
+## D38 — No Git LFS for the bundled samples
+
+The deployment notes warn that a Space may reject binaries pushed through plain git.
+The repository's binaries are seven generated PNGs of roughly a kilobyte each, and the
+largest tracked file of any kind is a 584 KB CSV, so nothing approaches that limit.
+Tracking them through LFS would add a second thing that has to succeed on every clone
+and push, and a lane that does not serve LFS objects would then fail where plain git
+works. If a future sample ever pushes the repository past what plain git accepts, that
+one file gets tracked rather than the whole pattern.

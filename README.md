@@ -120,7 +120,38 @@ build. The suite runs against the fake model, so it needs no keys and costs noth
 `deploy` runs on a push to `main`. It calls `ci` first and releases only if it passes, then
 deploys to Cloud Run and polls the health endpoint until the new revision answers.
 
-### One-time setup for deployment
+### Hugging Face Space
+
+The Space builds from the `Dockerfile`; the front matter at the top of this file is
+its card. Nothing here is committed to the repository — the token is typed at the
+prompt and the secrets live in the Space's own settings.
+
+1. **Create the Space** — huggingface.co → New Space → name `automatron` →
+   SDK **Docker** → template **Blank** → hardware **CPU basic (free)**.
+2. **Add secrets** under Settings → Variables and secrets:
+   `GROQ_API_KEY`, `GROQ_API_KEY_2`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`,
+   `MISTRAL_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`, and `APP_PASSWORD`.
+   Add as plain variables: `LOG_LEVEL=INFO`, `MAX_PARALLEL_STEPS=2`.
+
+   `APP_PASSWORD` is not optional on a public Space. Without it every API route is
+   open to anyone who finds the URL.
+3. **Create a write token** at huggingface.co/settings/tokens.
+4. **Push**, giving the token as the password when git asks:
+
+   ```bash
+   git remote add space https://huggingface.co/spaces/<hf-username>/automatron
+   git push space develop:main
+   ```
+5. **Watch the build logs.** The app is live once they show Uvicorn running. A free
+   Space sleeps when idle and restarts on the next visit; its runtime disk resets
+   each time, which is expected — nothing durable is kept there.
+
+The repository's binaries are seven synthetic PNGs of about a kilobyte each, and the
+largest tracked file is a 584 KB CSV, so Git LFS is not used. If a future sample
+pushes the repository past what plain git accepts, track that file with LFS rather
+than adding LFS across the board.
+
+### Cloud Run: one-time setup
 
 Authentication uses workload identity federation, so no service account key is ever stored
 in the repository. Run these once, replacing the project and repository if they differ:
