@@ -191,6 +191,22 @@ class TestAudit:
         valid, problems = core.verify_audit_chain()
         assert valid, problems
 
+    async def test_a_rejection_is_recorded_as_carefully_as_an_approval(self, graph_env):
+        """Both outcomes have to be auditable, or the log only records agreement."""
+        run_id, _ = await run_to_gate()
+        await core.submit_decision(
+            run_id, {"action": "reject", "reviewer": "Arnav", "notes": "not enough evidence"}
+        )
+
+        entries = core.read_audit(run_id)
+        assert len(entries) == 1
+        assert entries[0]["action"] == "reject"
+        assert entries[0]["reviewer"] == "Arnav"
+        assert entries[0]["brief_sha256"]
+
+        valid, problems = core.verify_audit_chain()
+        assert valid, problems
+
     async def test_the_chain_links_successive_runs(self, graph_env):
         for _ in range(2):
             run_id, _ = await run_to_gate()
