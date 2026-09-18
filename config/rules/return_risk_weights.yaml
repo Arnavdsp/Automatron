@@ -1,0 +1,87 @@
+# Weighted scoring for a return claim, 0-100. Every factor that fires is returned
+# with its weight and the observation behind it, because a score with no visible
+# contributors is not reviewable.
+#
+# These are risk SIGNALS, not findings. A high score means a claim is worth a
+# person's time, never that a customer did anything wrong.
+
+disclaimer: >-
+  Signals only. A high score means the claim warrants review, not that the
+  customer acted in bad faith. None of these factors is evidence of fraud on its
+  own, and several have innocent explanations that a reviewer should check first.
+
+# Score is the sum of the weights that fire, capped at 100.
+max_score: 100
+
+factors:
+  # --- account and history -------------------------------------------------
+  new_account:
+    weight: 10
+    when: Account opened less than 30 days before the claim.
+    innocent_explanation: A genuinely new customer whose first order went wrong.
+    threshold_days: 30
+  high_return_rate:
+    weight: 15
+    when: Return rate above the threshold across a meaningful number of orders.
+    innocent_explanation: Apparel buyers routinely order several sizes and return most.
+    threshold_rate: 0.4
+    minimum_orders: 5
+  prior_disputes_upheld:
+    weight: 18
+    when: More than one prior dispute previously decided against the customer.
+    innocent_explanation: A run of genuinely bad deliveries from one carrier.
+    threshold_count: 1
+
+  # --- claim shape ---------------------------------------------------------
+  high_value_claim:
+    weight: 12
+    when: Order value at or above the high-value threshold from the sector config.
+    innocent_explanation: Expensive items break too.
+  claim_near_window_edge:
+    weight: 8
+    when: Claim raised in the last few days of the return window.
+    innocent_explanation: People notice faults late, or travel.
+    days_from_edge: 3
+  repeat_claim_same_category:
+    weight: 10
+    when: An earlier claim of the same type on the same product category.
+    innocent_explanation: A repeatedly faulty product line.
+
+  # --- supplied evidence ---------------------------------------------------
+  image_hash_match_other_claim:
+    weight: 25
+    when: A supplied photo matches an image already filed against another claim.
+    innocent_explanation: >-
+      A shared household account, or a reshipped replacement photographed once.
+      Confirm whose claim the earlier image belongs to before drawing anything
+      from this.
+  image_missing_metadata:
+    weight: 5
+    when: Photos carry no capture metadata at all.
+    innocent_explanation: >-
+      Most messaging apps strip metadata on send, so this is weak on its own and
+      is weighted accordingly.
+  image_captured_before_delivery:
+    weight: 20
+    when: A photo's capture date precedes the delivery date.
+    innocent_explanation: A wrong device clock, or a photo of the listing rather than the item.
+  required_evidence_missing:
+    weight: 10
+    when: The policy's required evidence for this claim type was not supplied.
+    innocent_explanation: The customer was never asked for it.
+
+  # --- narrative -----------------------------------------------------------
+  transcript_inconsistency:
+    weight: 15
+    when: The account given conflicts with the order record on item, date or quantity.
+    innocent_explanation: Ordinary misremembering, or a conflated second order.
+  transcript_pressure_language:
+    weight: 7
+    when: Repeated urgency or escalation phrasing in the conversation.
+    innocent_explanation: Frustration after a genuine failure, which is common and reasonable.
+
+# Routing bands, read together with the sector thresholds. A band decides who
+# looks at the claim, never the outcome of the claim.
+bands:
+  high_risk_at_or_above: 70
+  specialist_at_or_above: 40

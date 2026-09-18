@@ -1,0 +1,11 @@
+{
+  "dispute_id": "DSP-2026-0007",
+  "order_id": "ORD-100155",
+  "reason_category": "not_received",
+  "network_reason_code": "sample code 13.1 (illustrative, confirm with your processor)",
+  "amount": 68.5,
+  "currency": "USD",
+  "notice_date": "2026-04-08",
+  "response_window_days": 20,
+  "note": "Synthetic records generated for this project from a fixed seed. Not real customers, orders, sellers or photographs."
+}

@@ -1,0 +1,63 @@
+# Return policy for the dispute workflow. Illustrative rules for a fictional
+# retailer: a real one would replace this file wholesale. Every clause that
+# decides something is reported with the value it compared against, so a
+# specialist can see the reasoning rather than a verdict.
+
+standard_window_days: 30
+
+# Longer or shorter windows by category. The category's window wins over the
+# standard one.
+category_windows:
+  electronics: 15
+  large_appliance: 14
+  apparel: 60
+  books: 30
+  grocery: 7
+  jewellery: 14
+
+# Categories that cannot be returned once opened or at all, with the reason a
+# brief should quote.
+excluded_categories:
+  perishable:
+    reason: Perishable goods cannot be returned once delivered.
+    allows_claim_types: [damaged, not_received, missing_item]
+  personal_care:
+    reason: Personal care items cannot be returned once the seal is broken.
+    allows_claim_types: [damaged, not_received, missing_item, not_as_described]
+  gift_card:
+    reason: Gift cards are not returnable.
+    allows_claim_types: [not_received]
+  custom_made:
+    reason: Made-to-order items are not returnable except for defects.
+    allows_claim_types: [damaged, not_as_described, not_received, missing_item]
+
+# What a claim of each type needs before it can be assessed.
+evidence_requirements:
+  damaged:
+    required: [photo_of_item, photo_of_packaging]
+    helpful: [unboxing_video]
+  not_as_described:
+    required: [photo_of_item]
+    helpful: [listing_screenshot]
+  missing_item:
+    required: [photo_of_packaging]
+    helpful: [package_weight_receipt, unboxing_video]
+  not_received:
+    required: []
+    helpful: [neighbour_check_confirmation, carrier_claim_reference]
+    note: >-
+      Carrier tracking is the primary evidence here and is read from the order
+      record rather than supplied by the customer.
+  changed_mind:
+    required: []
+    helpful: [item_unopened_photo]
+    note: Item must be unused and in original packaging.
+
+# Claim types that do not depend on the customer having received the item, so the
+# return window is measured from a different date.
+window_from_delivery: [damaged, not_as_described, missing_item, changed_mind]
+window_from_order: [not_received]
+
+# A not-received claim raised before the carrier's expected delivery date is too
+# early to assess rather than a policy failure.
+minimum_days_before_not_received_claim: 2

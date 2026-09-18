@@ -1,0 +1,10 @@
+{
+  "seller_id": "SEL-2044",
+  "violation_type": "counterfeit",
+  "sku": "BM-EB-12",
+  "appeal_letter": "Please reinstate our listings. We have done nothing wrong and the\ncomplaints are from competitors trying to damage our business. We have sold these\nearbuds for months with no issue and our rating is good.\n\nWe attach an invoice showing we buy genuine stock.\n\nPlease restore the listings as soon as possible as this is costing us money every\nday.\n",
+  "documents": [
+    "invoices/invoice_mismatch.txt"
+  ],
+  "note": "Synthetic records generated for this project from a fixed seed. Not real customers, orders, sellers or photographs."
+}

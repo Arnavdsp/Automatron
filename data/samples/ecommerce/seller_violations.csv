@@ -1,0 +1,10 @@
+# Synthetic records generated for this project from a fixed seed. Not real customers, orders, sellers or photographs.
+seller_id,date,event,detail
+SEL-2001,2026-03-02,ip_complaint_received,Rights owner complaint on one listing.
+SEL-2001,2026-03-03,listing_removed,Listing taken down pending review.
+SEL-2001,2026-03-05,appeal_submitted,Seller supplied distributor invoices.
+SEL-2044,2026-01-19,counterfeit_complaint,Two buyer complaints on one SKU.
+SEL-2044,2026-02-11,warning_issued,Warning on listing accuracy.
+SEL-2044,2026-03-28,counterfeit_complaint,Further complaints on the same SKU.
+SEL-2044,2026-03-30,listings_suspended,Category listings suspended.
+SEL-2044,2026-04-01,appeal_submitted,Seller supplied a supplier invoice.

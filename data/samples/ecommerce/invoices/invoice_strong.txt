@@ -1,0 +1,12 @@
+SUPPLIER INVOICE
+Supplier: Harbour Distribution Ltd (fictional)
+Invoice Number: HD-2026-4471
+Invoice Date: 2026-01-06
+Bill To: Northlight Audio (fictional)
+
+SKU         Description                 Qty      Unit Price     Line Total
+NL-HP-300   Northlight headphones 300   200      41.50          8300.00
+
+Subtotal: 8300.00
+Tax: 0.00
+Total: 8300.00 USD

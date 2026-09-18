@@ -1,0 +1,12 @@
+SUPPLIER INVOICE
+Supplier: Meridian Trade Supply (fictional)
+Invoice Number: MT-8823
+Invoice Date: 2026-02-20
+Bill To: Bright Market Goods (fictional)
+
+SKU        Description              Qty     Unit Price     Line Total
+BM-EB-12   Earbuds model 12         120     6.20           744.00
+
+Subtotal: 744.00
+Tax: 0.00
+Total: 744.00 USD

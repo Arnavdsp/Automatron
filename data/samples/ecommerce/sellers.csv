@@ -1,0 +1,4 @@
+# Synthetic records generated for this project from a fixed seed. Not real customers, orders, sellers or photographs.
+seller_id,display_name,joined,rating,orders_90d,category,prior_violations,prior_appeals_upheld,authorized_distributor
+SEL-2001,Northlight Audio (fictional),2021-06-14,4.7,1840,electronics,0,0,yes
+SEL-2044,Bright Market Goods (fictional),2025-09-02,4.1,620,electronics,2,0,no

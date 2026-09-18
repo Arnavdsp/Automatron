@@ -1,0 +1,11 @@
+{
+  "order_id": "ORD-100128",
+  "claim_type": "damaged",
+  "claim_text": "Headphones were crushed in the box. I need a full refund now.",
+  "chat_transcript": "Customer: The headphones are destroyed. I want a full refund immediately.\nAgent: I am sorry. Could you send photographs of the item and the box?\nCustomer: Sent. This is urgent, I need my money back today or I will escalate to my bank and start a chargeback.\nAgent: Understood, I am raising this for review.\nCustomer: Get me a manager right now.",
+  "photos": [
+    "photos/claim_128_item.png",
+    "photos/claim_128_packaging.png"
+  ],
+  "note": "Synthetic records generated for this project from a fixed seed. Not real customers, orders, sellers or photographs."
+}

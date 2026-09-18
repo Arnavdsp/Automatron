@@ -1,0 +1,12 @@
+workflow_id: ecommerce.chargeback_packet
+sector: ecommerce
+sample: dispute_not_received_strong
+request: Build the representment packet for this chargeback notice.
+expect:
+  level_in: [STRONG_PACKET]
+  required_quant_keys: ["weight", "count"]
+  min_findings: 3
+  must_mention_any: ["evidence", "completeness", "deadline", "exhibit"]
+  forbidden: ["submitted to the bank", "submitted to the issuer", "dispute is won",
+              "we will win", "chargeback reversed"]
+  min_options: 2
