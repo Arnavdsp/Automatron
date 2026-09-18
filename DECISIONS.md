@@ -324,3 +324,24 @@ the workflow can compute a date and show its arithmetic, and every computed date
 returned carrying the words "placeholder — confirm local law". Eviction, apparent
 threats and apparent discriminatory language escalate to counsel regardless of anything
 else in the record, because those are not calls this should be making.
+
+## D36 — A run's ceiling allows for a queueing provider, not a healthy one
+
+The first live evaluation failed two workflows, both by exceeding the 300 second run
+ceiling. The logs showed why: free provider tiers queue rather than refuse, and single
+calls were observed taking 258 and 229 seconds while the run produced no output at
+all. Forcing every one of the eleven slots to fail offline showed the degradation path
+itself is sound — the run still finished in 43 seconds with a brief marked low
+confidence — so the ceiling, not the failover, was what ended those runs. It is now a
+setting, `RUN_TIMEOUT_S`, defaulting to 600 seconds, and a timeout records which steps
+had completed: a run that stalled on its first call and one that was nearly finished
+need different answers, and "exceeded the time limit" does not tell them apart.
+
+## D37 — An unclassified provider failure keeps the provider's own words
+
+Provider failures were logged with the provider, the model and the classification, but
+not the error text. Since `other` is the catch-all, the one case with nothing to
+diagnose it from was the case that most needed it: a live run produced four `other`
+classifications that could not be told apart afterwards. The detail is now logged,
+passed through the same redaction as everything else, because provider errors
+sometimes quote the key back.

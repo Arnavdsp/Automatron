@@ -95,6 +95,7 @@ the app starts in demo mode and says so when no provider key is present.
 | `APP_USERNAME`, `APP_PASSWORD` | HTTP basic auth. **Without a password every API route is open**, which is fine locally and not fine anywhere reachable. |
 | `PORT` | Defaults to 7860; Cloud Run injects its own. |
 | `LOG_LEVEL`, `MAX_PARALLEL_STEPS`, `RATE_LIMIT_PER_IP_PER_HOUR` | Runtime tuning. |
+| `RUN_TIMEOUT_S` | A run's ceiling, default 600 s. Free provider tiers queue rather than refuse — a single queued call has been seen taking four minutes — so this allows for a degraded provider chain, not a healthy one. |
 
 Thresholds per sector live in `config/sectors.yaml` and can be overridden by the
 environment variables listed in `.env.example`.
