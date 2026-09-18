@@ -101,15 +101,20 @@ def score(scenario: dict, view, core) -> list[tuple[str, bool, str]]:
         )
     )
 
-    model_calls = sum(1 for e in view.trace if e.get("provider"))
-    coordinator_calls = sum(
-        1 for e in view.trace if e.get("provider") and e.get("node") in ("plan", "synthesize")
-    )
+    # Only completions count against the budget. Every trace event from the router
+    # carries a provider, including the failover notices, so counting all of them
+    # measured how hard the chain had to work rather than how many answers the run
+    # needed: a step that failed over twice before succeeding read as three calls.
+    done = [e for e in view.trace if e.get("provider") and e.get("kind") == "done"]
+    model_calls = len(done)
+    coordinator_calls = sum(1 for e in done if e.get("node") in ("plan", "synthesize"))
+    failovers = sum(1 for e in view.trace if e.get("kind") == "failover")
     checks.append(
         (
             "budget",
             model_calls <= MAX_MODEL_CALLS and coordinator_calls <= MAX_COORDINATOR_CALLS,
-            f"{model_calls} model calls, {coordinator_calls} coordinator",
+            f"{model_calls} completions ({failovers} failovers), "
+            f"{coordinator_calls} coordinator",
         )
     )
     return checks
