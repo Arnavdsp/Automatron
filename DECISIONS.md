@@ -355,3 +355,15 @@ Tracking them through LFS would add a second thing that has to succeed on every 
 and push, and a lane that does not serve LFS objects would then fail where plain git
 works. If a future sample ever pushes the repository past what plain git accepts, that
 one file gets tracked rather than the whole pattern.
+
+## D39 — An unconfigured deploy skips rather than failing
+
+Deployment credentials are set up once, by hand, and the workflow was written
+assuming that had happened. It had not, so every merge to the default branch ran the
+deploy, failed at the authentication step, and left a red run behind — three of them
+before anyone looked. A deploy that is red by default is worse than no deploy
+workflow at all: it teaches everyone to expect the failure, and hides the day it
+breaks for a reason that matters. The workflow now checks whether the three
+repository secrets exist, reports which are missing in the run summary, and skips the
+deploy while still running the full checks. It starts deploying by itself the moment
+the secrets are added, with no further edit.

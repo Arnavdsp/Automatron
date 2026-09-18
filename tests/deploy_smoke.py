@@ -49,7 +49,10 @@ def main(argv: list[str]) -> int:
     failures: list[str] = []
 
     def check(name: str, ok: bool, detail: str = "") -> None:
-        print(f"  {'PASS' if ok else 'FAIL'}  {name}" + (f"  — {detail}" if detail else ""))
+        # The detail explains a failure, so it only prints on one. Printing it beside
+        # a passing check reads as though the failure happened anyway.
+        explanation = f"  — {detail}" if detail and not ok else ""
+        print(f"  {'PASS' if ok else 'FAIL'}  {name}{explanation}")
         if not ok:
             failures.append(name)
 
@@ -83,13 +86,18 @@ def main(argv: list[str]) -> int:
               "no password given to this script; if the service has none, every route "
               "is public")
 
-    status, body = fetch(f"{base}/api/v1/providers", auth)
-    check("provider status is readable", status == 200, f"status {status}")
-    if isinstance(body, list) and body:
-        healthy = [p for p in body if p.get("state") in ("ok", "ready", "healthy")]
-        names = sorted({p.get("provider", "?") for p in body})
-        check("at least one provider is usable", bool(healthy),
-              f"{len(healthy)} of {len(body)} slots usable across {names}")
+    # Provider status sits behind the password. Without one there is nothing to check
+    # here, and calling it anyway would report the API's correct refusal as a fault.
+    if auth:
+        status, body = fetch(f"{base}/api/v1/providers", auth)
+        check("provider status is readable", status == 200, f"status {status}")
+        if isinstance(body, list) and body:
+            healthy = [p for p in body if p.get("state") in ("ok", "ready", "healthy")]
+            names = sorted({p.get("provider", "?") for p in body})
+            check("at least one provider is usable", bool(healthy),
+                  f"{len(healthy)} of {len(body)} slots usable across {names}")
+    else:
+        print("  SKIP  provider status — needs --password")
 
     print()
     if failures:

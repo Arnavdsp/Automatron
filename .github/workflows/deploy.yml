@@ -25,8 +25,42 @@ jobs:
   checks:
     uses: ./.github/workflows/ci.yml
 
+  # Deployment credentials are set up once, by hand, and until that happens the
+  # deploy cannot run. Attempting it anyway failed the auth step on every merge,
+  # which trains everyone to expect a red deploy and hides the day it breaks for a
+  # real reason. So the run reports that it is not configured and stops there.
+  configured:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.probe.outputs.ready }}
+    steps:
+      - id: probe
+        env:
+          PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+          ACCOUNT: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          missing=""
+          [ -n "$PROVIDER" ] || missing="$missing GCP_WIF_PROVIDER"
+          [ -n "$ACCOUNT" ] || missing="$missing GCP_DEPLOY_SERVICE_ACCOUNT"
+          [ -n "$PROJECT" ] || missing="$missing GCP_PROJECT_ID"
+          if [ -z "$missing" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "deployment credentials are configured"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "### Deploy skipped: not configured" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Missing repository secrets:$missing" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "The README covers the one-time setup. Nothing was deployed, and" \
+                 "the checks above still ran." >> "$GITHUB_STEP_SUMMARY"
+            echo "deploy skipped; missing:$missing"
+          fi
+
   deploy:
-    needs: checks
+    needs: [checks, configured]
+    if: needs.configured.outputs.ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment: production
