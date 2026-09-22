@@ -61,3 +61,37 @@ def test_a_tool_declaring_nothing_is_untouched():
 def test_the_parameters_come_from_the_tools_own_schema():
     classify = tool_by_name("classify")
     assert core.tool_parameter_names(classify) == {"value", "threshold"}
+
+
+def test_every_kind_the_agent_emits_is_one_the_trace_accepts():
+    """A step reports on itself through the trace, so an event the trace rejects used
+    to abort the work being reported. Pin the vocabulary the two sides share."""
+    import inspect
+    import re
+    import typing
+
+    source = inspect.getsource(core.run_tool_agent)
+    emitted = set(re.findall(r'note\(\{"kind":\s*"([a-z_]+)"', source))
+    allowed = set(typing.get_args(core.TraceKind))
+    assert emitted, "no trace events found in the agent"
+    assert emitted <= allowed, f"agent emits kinds the trace rejects: {sorted(emitted - allowed)}"
+
+
+async def test_a_listener_that_raises_does_not_cost_the_step_its_work(monkeypatch):
+    """Observability is not the job. A trace listener that rejects an event loses the
+    event; the step it was reporting on still has to finish."""
+    pack = testsector.install(monkeypatch)
+
+    def refuses_everything(event):
+        raise ValueError("no")
+
+    result = await core.run_tool_agent(
+        role="executor",
+        instruction="Measure probe-9.",
+        pack=pack,
+        step_id="s1",
+        tools=pack.tools_for("executor"),
+        run_inputs={"subject": "probe-9"},
+        on_event=refuses_everything,
+    )
+    assert result.status != "failed"
