@@ -140,6 +140,40 @@ class TestForbiddenLanguage:
         )
         assert any("safe to ignore" in issue for issue in issues)
 
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("title", "I have approved the return"),
+            ("confidence_reason", "This outcome is guaranteed."),
+            ("data_quality_issues", ["The trade was executed."]),
+            ("missing_information", ["The packet was submitted to the issuer."]),
+            ("drafts", [{"body": "I have approved the refund on your account."}]),
+        ],
+    )
+    def test_every_field_a_reader_sees_is_scanned(self, field, value):
+        """Checking only part of the brief left the rest free to say it instead."""
+        issues = core.verify_brief(brief_with(**{field: value}), completed_with())
+        assert any("decision-taking language" in issue for issue in issues), field
+
+    def test_an_option_cannot_carry_it_either(self):
+        option = core.Option(name="The order placed cleared at noon", description="Do it.",
+                             pros=["This outcome is guaranteed."], cons=["None"])
+        issues = core.verify_brief(brief_with(options=[option, option]), completed_with())
+        assert any("decision-taking language" in issue for issue in issues)
+
+    def test_the_verifiers_own_warning_does_not_flag_itself(self):
+        """The warning quotes the phrase back. Scanning it would never clear."""
+        brief = brief_with(
+            verification_warnings=["decision-taking language: 'I have approved'"],
+            revision_notes=["Verifier: decision-taking language: 'I have approved'"],
+        )
+        assert core.verify_brief(brief, completed_with()) == []
+
+    def test_a_reviewers_own_words_are_left_alone(self):
+        """A human reviewer may need the plain word; the rules are for the model."""
+        brief = brief_with(reviewer_comments="I have approved this myself.")
+        assert core.verify_brief(brief, completed_with()) == []
+
     def test_proposal_wording_is_allowed(self):
         brief = brief_with(recommendation="Proposed: maneuver planning — requires approval.")
         assert core.verify_brief(brief, completed_with()) == []
