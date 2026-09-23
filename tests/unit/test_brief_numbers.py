@@ -69,3 +69,36 @@ def _level_spec(vocabulary):
 
     spec = testsector.build_pack().workflows[0]
     return spec.model_copy(update={"level_vocab": vocabulary})
+
+
+class TestNumbersAreCopiedFromTools:
+    """The spec has the quantitative table copied from tools, not written by a model."""
+
+    def test_every_measured_scalar_is_carried(self):
+        completed = {
+            "s1": {"data": {"miss_distance_m": 570.272, "count": 4}},
+            "s2": {"data": {"trend": {"latest_pc": 3.0e-4}}},
+        }
+        numbers = core.tool_quantities(completed)
+        assert numbers["miss distance m"] == "570.272"
+        assert numbers["count"] == "4"
+        # Nested measures keep the path that gives them meaning.
+        assert numbers["trend latest pc"] == "0.0003"
+
+    def test_a_step_with_no_data_is_harmless(self):
+        assert core.tool_quantities({"s1": {}, "s2": {"data": {}}, "s3": None}) == {}
+
+    def test_steps_are_read_in_order(self):
+        """A later step's value for the same label wins, as the step order implies."""
+        completed = {"s2": {"data": {"pc": 2}}, "s1": {"data": {"pc": 1}}}
+        assert list(core.tool_quantities(completed).values()) == ["2"]
+
+    def test_synthesis_overrides_whatever_the_model_wrote(self):
+        """Fake mode always builds the brief from tools, so only the live branch can
+        regress here. Pin the override rather than leave it uncovered."""
+        import inspect
+
+        source = inspect.getsource(core.build_graph)
+        assert "brief.quantitative_results = tool_quantities(completed)" in source, (
+            "synthesis must copy the numbers from tool output, not keep the model's"
+        )
