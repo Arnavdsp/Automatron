@@ -161,6 +161,15 @@ async def main(argv: list[str]) -> int:
         print("no scenarios found")
         return 1
 
+    # The app seeds the knowledge base at startup, so a run that skips it is not
+    # measuring the system anyone deploys: every retrieval misses, and the briefs
+    # come back hedged because the researcher found nothing.
+    indexed = core.seed_knowledge()
+    if not sum(indexed.values()):
+        print("warning: knowledge base is empty; retrieval-backed checks will be weak")
+    else:
+        print(f"knowledge base ready: {indexed}")
+
     passed_count = 0
     for scenario in scenarios:
         ok, checks = await run_one(scenario, core)
