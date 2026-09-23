@@ -95,3 +95,29 @@ async def test_a_listener_that_raises_does_not_cost_the_step_its_work(monkeypatc
         on_event=refuses_everything,
     )
     assert result.status != "failed"
+
+
+class TestTheNamedCaseWins:
+    """A run names the case; a model-supplied payload must not redirect the tool."""
+
+    def test_a_named_sample_beats_an_invented_ticket(self):
+        # Taken from the module, not the registry: other tests clear the registry,
+        # and this is about the tool itself rather than how it was registered.
+        from automatron_quant import check_limits as gate
+
+        # What a model produces when it half-remembers the case from an earlier step.
+        result = gate.invoke({"ticket": {"instrument": "SPY"},
+                              "sample_name": "ticket_large_highrisk"})
+        assert "error" not in result, result
+        assert result["notional_usd"] > 0
+
+    def test_an_inline_payload_still_works_when_no_sample_is_named(self):
+        """Callers who supply the case themselves are not forced onto a bundled one."""
+        from automatron_quant import check_limits as gate
+
+        ticket = {"ticket_id": "T-1", "instrument": "SPY", "asset_class": "equity",
+                  "side": "BUY", "quantity": 10, "limit_price": 100.0,
+                  "currency": "USD", "client_id": "C-1",
+                  "client_segment": "STANDARD", "strategy_id": "discretionary"}
+        result = gate.invoke({"ticket": ticket, "sample_name": ""})
+        assert "error" not in result, result
