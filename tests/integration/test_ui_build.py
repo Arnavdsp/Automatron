@@ -232,4 +232,11 @@ class TestStyling:
             assert ratio >= 4.5, f"{sector_id} accent {accent} is {ratio:.2f}:1 on {background}"
 
     def test_the_stylesheet_stays_small(self):
-        assert len(core.UI_CSS.splitlines()) < 200
+        """Restraint is about how many rules there are, not how well they are
+        explained. Counting raw lines pushed toward deleting the comments that say
+        why a rule exists, so count the lines that actually style something."""
+        rules = [
+            line for line in core.UI_CSS.splitlines()
+            if line.strip() and not line.strip().startswith(("/*", "*", "*/"))
+        ]
+        assert len(rules) < 200, f"{len(rules)} styling lines"
