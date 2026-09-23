@@ -259,3 +259,33 @@ class TestFailureHandling:
         run_id, _ = await run_to_gate()
         seen = [event async for event in core.stream_events(run_id)]
         assert seen and seen[0]["node"] == "intake"
+
+
+class TestPlanSize:
+    """A workflow's own plan is the shape its author designed."""
+
+    async def test_an_oversized_plan_falls_back_to_the_workflows_own(self, graph_env):
+        """Falling back costs nothing; asking for a repair costs the call being saved."""
+        designed = len(testsector.DEFAULT_PLAN.steps)
+        oversized = {
+            "objective": "Do more than the workflow asks for.",
+            "steps": [
+                {"id": f"x{n}", "agent": "executor", "instruction": "Do a thing.",
+                 "depends_on": []}
+                for n in range(designed + 2)
+            ]
+        }
+        # The run installs the workflow's own script, so the override belongs there.
+        spec = graph_env.workflow(testsector.WORKFLOW_ID)
+        spec.fake_script = {
+            "steps": testsector.FAKE_SCRIPT,
+            "structured": {**testsector.STRUCTURED, "Plan": oversized},
+        }
+        _, view = await run_to_gate()
+        assert any("more than the" in e["message"] for e in view.trace)
+        ran = {e["step_id"] for e in view.trace if e.get("step_id")}
+        assert len(ran) <= designed
+
+    async def test_the_prompt_states_the_workflows_own_ceiling(self, graph_env):
+        """The planner is told the number it should plan to, not the global backstop."""
+        assert "{max_plan_steps}" in core.COORDINATOR_PLAN_PROMPT
