@@ -118,27 +118,40 @@ class TestApproval:
 class TestRequestChanges:
     async def test_request_changes_returns_to_the_gate_with_the_note_recorded(self, graph_env):
         run_id, first = await run_to_gate()
-        assert first.revisions == 1
+        # The brief a reviewer first sees has not been revised, so the count is zero.
+        assert first.revisions == 0
 
         view = await core.submit_decision(
             run_id,
             {"action": "request_changes", "reviewer": "Arnav", "notes": "Add the units."},
         )
         assert view.status == "awaiting_approval"
-        assert view.revisions == 2
+        assert view.revisions == 1
         assert "Add the units." in view.brief["revision_notes"]
+
+    async def test_the_reviewer_gets_every_round_the_gate_offers(self, graph_env):
+        """Both change requests must be acted on, not just the first."""
+        run_id, _ = await run_to_gate()
+        first = await core.submit_decision(
+            run_id, {"action": "request_changes", "reviewer": "Arnav", "notes": "One."}
+        )
+        second = await core.submit_decision(
+            run_id, {"action": "request_changes", "reviewer": "Arnav", "notes": "Two."}
+        )
+        assert (first.revisions, second.revisions) == (1, core.MAX_REVISIONS)
+        assert "Two." in second.brief["revision_notes"]
 
     async def test_the_revision_limit_is_enforced(self, graph_env):
         run_id, _ = await run_to_gate()
-        await core.submit_decision(
-            run_id, {"action": "request_changes", "reviewer": "Arnav", "notes": "One."}
-        )
-        view = await core.submit_decision(
-            run_id, {"action": "request_changes", "reviewer": "Arnav", "notes": "Two."}
-        )
+        for note in ("One.", "Two.", "Three."):
+            view = await core.submit_decision(
+                run_id, {"action": "request_changes", "reviewer": "Arnav", "notes": note}
+            )
         # Still at the gate, and now the reviewer has to approve or reject.
         assert view.status == "awaiting_approval"
+        assert view.revisions == core.MAX_REVISIONS
         assert any("revision limit" in e["message"] for e in view.trace)
+        assert "Three." not in view.brief["revision_notes"]
 
     async def test_approving_after_a_revision_still_works(self, graph_env):
         run_id, _ = await run_to_gate()

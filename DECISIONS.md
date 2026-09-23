@@ -367,3 +367,25 @@ breaks for a reason that matters. The workflow now checks whether the three
 repository secrets exist, reports which are missing in the run summary, and skips the
 deploy while still running the full checks. It starts deploying by itself the moment
 the secrets are added, with no further edit.
+
+## D40 — The one suppressed dependency advisory, and why
+
+The dependency audit runs with `--strict` so that anything it finds stops the build,
+with a single exception recorded here: `PYSEC-2026-3740` (aliases `CVE-2026-81726`,
+`GHSA-8mgp-746c-j5xp`), a high-severity path-traversal advisory against `nltk`. It is
+unpatched at the latest published release, and `nltk` is not a direct dependency here
+at all; it arrives under `llama-index-core`, so there is no version to move to and
+nothing to drop.
+
+Suppressing it is defensible only because the affected code is never entered. The
+advisory covers model-artifact load and save paths — `TransitionParser.train` and
+`.parse`, `AveragedPerceptron.save` and `.load`, `PerceptronTagger.save_to_json`, and
+`save_maxent_params` — all of which take a caller-supplied path. `llama-index-core`
+touches `nltk` only for sentence and word tokenization (`PunktSentenceTokenizer`,
+`sent_tokenize`, `wordpunct_tokenize`), and none of the named APIs appear anywhere in
+the installed tree. No path in this project reaches them, and no user-supplied value
+is ever passed to `nltk` as a filename.
+
+The suppression is pinned to that one advisory ID rather than to the package, so any
+other finding against `nltk` still fails the build. Revisit when a fixed release
+exists: drop the flag and let the audit confirm it.
