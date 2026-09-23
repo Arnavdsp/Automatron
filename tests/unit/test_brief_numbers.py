@@ -102,3 +102,13 @@ class TestNumbersAreCopiedFromTools:
         assert "brief.quantitative_results = tool_quantities(completed)" in source, (
             "synthesis must copy the numbers from tool output, not keep the model's"
         )
+
+    def test_live_steps_take_their_data_from_the_tools(self):
+        """Fake mode already builds step data from tool output; the live branch used
+        the model's copy, which is where reworded and missing figures came from."""
+        import inspect
+
+        source = inspect.getsource(core.run_tool_agent)
+        assert "data = draft_from_tool_output(payloads).data" in source, (
+            "a live step must report the data its tools returned, not the model's"
+        )
