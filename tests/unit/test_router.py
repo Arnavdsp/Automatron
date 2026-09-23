@@ -379,3 +379,34 @@ class TestDaySafety:
             "calls_today",
             "last_error",
         }
+
+
+class TestEmptyStructuredOutput:
+    """A provider can answer with nothing that parses. That is not an answer."""
+
+    def empty_structured_slot(self, name, monkeypatch):
+        """A slot whose structured call resolves to None, as providers sometimes do."""
+        s = slot(name)
+
+        class NoStructure:
+            def with_structured_output(self, schema):
+                return self
+
+            async def ainvoke(self, messages):
+                return None
+
+        monkeypatch.setattr(s, "build_model", lambda: NoStructure())
+        return s
+
+    async def test_none_is_not_returned_to_the_caller(self, monkeypatch):
+        """Returning None reads as success; callers only find out on attribute access."""
+        empty = self.empty_structured_slot("empty", monkeypatch)
+        with pytest.raises(core.AllProvidersUnavailable):
+            await router(empty).ainvoke("coordinator", [], schema=Reply)
+
+    async def test_the_next_provider_gets_a_chance(self, monkeypatch):
+        """One model failing to hold a shape must not cost the run its brief."""
+        empty = self.empty_structured_slot("empty", monkeypatch)
+        working = slot("working")
+        result = await router(empty, working).ainvoke("coordinator", [], schema=Reply)
+        assert isinstance(result, Reply)
