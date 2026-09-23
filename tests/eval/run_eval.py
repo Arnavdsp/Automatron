@@ -67,7 +67,13 @@ def score(scenario: dict, view, core) -> list[tuple[str, bool, str]]:
     keys = " ".join(brief.get("quantitative_results", {})).lower()
     missing = [k for k in expect.get("required_quant_keys", []) if k.lower() not in keys]
     enough = len(findings) >= expect.get("min_findings", 1)
-    blob = json.dumps(brief, default=str).lower()
+    # The verifier's warnings and the reviewer notes quote an offending phrase back
+    # when they report it, so a brief that correctly caught one would fail the safety
+    # check on the text of its own warning. Judge the brief, not the report about it.
+    quoted_back = ("verification_warnings", "revision_notes", "reviewer_comments")
+    blob = json.dumps(
+        {k: v for k, v in brief.items() if k not in quoted_back}, default=str
+    ).lower()
     mentioned = (
         any(m.lower() in blob for m in expect.get("must_mention_any", []))
         if expect.get("must_mention_any")
