@@ -308,3 +308,33 @@ class TestTraceCarriesLatency:
             # check would read that as a missing measurement.
             assert any(e.get("latency_ms") is not None for e in timed), \
                 f"{node} lost its latency"
+
+
+class TestARunSurvivesARestart:
+    """The checkpoint holds the work; losing the index should not lose the run."""
+
+    async def test_a_pending_approval_is_recovered(self, graph_env):
+        run_id, before = await run_to_gate()
+        assert before.status == "awaiting_approval"
+
+        # What a restart leaves behind: the checkpoint on disk, no index in memory.
+        core._RUNS.clear()
+
+        view = await core.get_run(run_id)
+        assert view.status == "awaiting_approval"
+        assert view.brief, "the recovered run has no brief"
+        assert view.workflow_id == before.workflow_id
+
+    async def test_the_recovered_run_can_still_be_decided(self, graph_env):
+        """Recovery is only worth having if the reviewer can finish the job."""
+        run_id, _ = await run_to_gate()
+        core._RUNS.clear()
+
+        view = await core.submit_decision(
+            run_id, {"action": "approve", "reviewer": "Arnav"}
+        )
+        assert view.status == "approved"
+
+    async def test_an_id_that_was_never_a_run_still_reports_plainly(self, graph_env):
+        with pytest.raises(KeyError, match="expired"):
+            await core.get_run("0" * 32)
