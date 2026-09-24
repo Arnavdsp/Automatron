@@ -289,3 +289,22 @@ class TestPlanSize:
     async def test_the_prompt_states_the_workflows_own_ceiling(self, graph_env):
         """The planner is told the number it should plan to, not the global backstop."""
         assert "{max_plan_steps}" in core.COORDINATOR_PLAN_PROMPT
+
+
+class TestTraceCarriesLatency:
+    async def test_a_completed_call_records_how_long_it_took(self, graph_env):
+        """The renderer has always shown a latency column; the relay never filled it,
+        so every timing the router measured was dropped on the way to the trace."""
+        _, view = await run_to_gate()
+        # Per node, because the relay is written out once per node and one missing
+        # copy hides the calls that dominate a run. Demo mode builds the brief from
+        # tool output, so synthesis makes no provider call here and cannot be checked.
+        done = [e for e in view.trace if e.get("kind") == "done" and e.get("provider")]
+        nodes = {e.get("node") for e in done}
+        assert {"plan", "run_step"} <= nodes, f"expected model calls, saw {nodes}"
+        for node in nodes:
+            timed = [e for e in done if e.get("node") == node]
+            # "is not None": a scripted call really does take 0 ms, and a truthiness
+            # check would read that as a missing measurement.
+            assert any(e.get("latency_ms") is not None for e in timed), \
+                f"{node} lost its latency"
