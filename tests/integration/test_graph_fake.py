@@ -1,5 +1,7 @@
 """The whole graph, end to end, against the scripted model."""
 
+import asyncio
+
 import pytest
 from pydantic import ValidationError
 
@@ -338,3 +340,54 @@ class TestARunSurvivesARestart:
     async def test_an_id_that_was_never_a_run_still_reports_plainly(self, graph_env):
         with pytest.raises(KeyError, match="expired"):
             await core.get_run("0" * 32)
+
+
+class TestIdempotentStarts:
+    """A run costs real provider quota, so a retry must not buy a second one."""
+
+    async def test_the_same_key_returns_the_same_run(self, graph_env):
+        first = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                     _DEFAULT_INPUTS, idempotency_key="k-1")
+        await core.wait_for_run(first)
+        second = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                      _DEFAULT_INPUTS, idempotency_key="k-1")
+        assert second == first
+
+    async def test_no_second_run_is_started(self, graph_env):
+        """The identity check is worth nothing if the work happens anyway."""
+        await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                             _DEFAULT_INPUTS, idempotency_key="k-2")
+        assert len(core._RUNS) == 1
+        await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                             _DEFAULT_INPUTS, idempotency_key="k-2")
+        assert len(core._RUNS) == 1, "the retry started another run"
+
+    async def test_different_keys_are_different_runs(self, graph_env):
+        a = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                 _DEFAULT_INPUTS, idempotency_key="k-3")
+        b = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                 _DEFAULT_INPUTS, idempotency_key="k-4")
+        assert a != b
+
+    async def test_no_key_means_no_sharing(self, graph_env):
+        """Clients that send nothing keep the old behaviour."""
+        a = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                 _DEFAULT_INPUTS)
+        b = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                 _DEFAULT_INPUTS)
+        assert a != b
+
+    async def test_racing_requests_cannot_both_get_through(self, graph_env):
+        """The key is recorded before the work starts, not after it finishes."""
+        a, b = await asyncio.gather(
+            core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                           _DEFAULT_INPUTS, idempotency_key="k-5"),
+            core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                           _DEFAULT_INPUTS, idempotency_key="k-5"),
+        )
+        assert a == b, "two racing retries each started a run"
+
+    async def test_the_key_map_does_not_grow_without_bound(self, graph_env):
+        for n in range(core.MAX_IDEMPOTENCY_KEYS + 20):
+            core.remember_key(f"key-{n}", f"run-{n}")
+        assert len(core._IDEMPOTENT) <= core.MAX_IDEMPOTENCY_KEYS

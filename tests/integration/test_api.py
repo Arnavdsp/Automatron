@@ -305,3 +305,38 @@ def test_health_still_open_when_a_password_is_set(monkeypatch, tmp_path):
         core.reset_run_service()
         core.reset_rag_cache()
         core.reset_settings_cache()
+
+
+class TestIdempotencyKey:
+    """A retried POST must not start a second run."""
+
+    def send(self, client, key):
+        return client.post(
+            f"{API}/runs",
+            data={
+                "sector": "space",
+                "workflow_id": testsector.WORKFLOW_ID,
+                "request": "Assess probe-1.",
+                "inputs_json": json.dumps({"subject": "probe-1"}),
+            },
+            headers={"Idempotency-Key": key},
+        )
+
+    def test_a_replay_returns_the_first_run(self, client):
+        first = self.send(client, "abc-123")
+        assert first.status_code == 200
+        again = self.send(client, "abc-123")
+        assert again.status_code == 200
+        assert again.json()["thread_id"] == first.json()["thread_id"]
+        assert again.json()["replayed"] is True
+
+    def test_the_first_call_is_not_marked_as_a_replay(self, client):
+        assert "replayed" not in self.send(client, "abc-456").json()
+
+    def test_a_fresh_key_starts_its_own_run(self, client):
+        one = self.send(client, "abc-789").json()["thread_id"]
+        two = self.send(client, "abc-000").json()["thread_id"]
+        assert one != two
+
+    def test_without_the_header_every_post_is_a_new_run(self, client):
+        assert start(client).json()["thread_id"] != start(client).json()["thread_id"]

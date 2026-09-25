@@ -83,7 +83,26 @@ python tests/eval/run_eval.py           # golden scenarios
 No keys are needed to try it: with `AUTOMATRON_FAKE_LLM=1` the real tools still run
 and only the model is replaced, so every workflow is demonstrable offline.
 
-### Configuration
+### Retrying a request
+
+`POST /api/v1/runs` accepts an `Idempotency-Key` header. A repeat of the same key
+returns the run it already started, marked `"replayed": true`, instead of starting
+a second one. A run spends provider quota, so a double-click or a network retry
+should not buy another.
+
+```bash
+curl -X POST "$URL/api/v1/runs" -u "$USER:$PASS" \
+  -H 'Idempotency-Key: 7f3a9c' \
+  -F sector=space -F workflow_id=space.conjunction_triage \
+  -F 'request=Triage this conjunction.' \
+  -F 'inputs_json={"sample_name":"cdm_high_risk"}'
+```
+
+Keys are held in the serving process, so they do the job for a client retrying its
+own request. Across several instances a retry can still land on one that has not
+seen the key.
+
+## Configuration
 
 Copy `.env.example` to `.env` and fill in what you have. Everything is optional —
 the app starts in demo mode and says so when no provider key is present.
