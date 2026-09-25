@@ -149,3 +149,32 @@ class TestFinishingFromTheAgentsOwnAnswer:
         """Nothing written means nothing to keep, so the tool account stands in."""
         draft = core.draft_from_reply("", [("parse_cdm", {"count": 4})])
         assert draft.summary and "parse_cdm" in draft.summary
+
+
+class TestTheLevelComesFromTheTool:
+    """The level is the decision; a tool works it out from thresholds."""
+
+    class Spec:
+        level_vocab = ["RED", "YELLOW", "GREEN"]
+
+    def test_a_tools_classification_is_returned(self):
+        completed = {"s1": {"data": {"classify": {"level": "RED", "pc": 3.0e-4}}}}
+        assert core.declared_level(completed, self.Spec()) == "RED"
+
+    def test_nothing_is_returned_when_no_tool_decided(self):
+        """So a caller with a level of its own is not overruled by a guess."""
+        completed = {"s1": {"data": {"pc": 3.0e-4, "note": "looks RED to me"}}}
+        assert core.declared_level(completed, self.Spec()) is None
+
+    def test_a_mention_is_not_a_decision(self):
+        """A threshold named after a band is not the tool making the call."""
+        completed = {"s1": {"data": {"thresholds_used": {"pc_red": 1e-4}}}}
+        assert core.declared_level(completed, self.Spec()) is None
+
+    def test_synthesis_prefers_the_tools_level(self):
+        import inspect
+
+        source = inspect.getsource(core.build_graph)
+        assert "declared_level(completed, spec)" in source, (
+            "synthesis must take the level from the tool that decided it"
+        )
