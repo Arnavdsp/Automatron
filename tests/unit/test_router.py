@@ -1,5 +1,6 @@
 """Provider routing: classification, cooldowns, quota reservation, failover."""
 
+import asyncio
 import datetime as dt
 
 import pytest
@@ -410,3 +411,51 @@ class TestEmptyStructuredOutput:
         working = slot("working")
         result = await router(empty, working).ainvoke("coordinator", [], schema=Reply)
         assert isinstance(result, Reply)
+
+
+class TestTheDeadlineIsEnforced:
+    """The SDKs take a timeout and do not always keep to it."""
+
+    def stalling_slot(self, name, monkeypatch, seconds=120):
+        s = slot(name)
+
+        class Stalls:
+            def bind_tools(self, tools):
+                return self
+
+            def with_structured_output(self, schema):
+                return self
+
+            async def ainvoke(self, messages):
+                await asyncio.sleep(seconds)
+                raise AssertionError("the deadline did not fire")
+
+        monkeypatch.setattr(s, "build_model", lambda: Stalls())
+        return s
+
+    async def test_a_stalling_provider_does_not_hold_the_run(self, monkeypatch):
+        monkeypatch.setattr(core, "REQUEST_TIMEOUT_S", 0)
+        monkeypatch.setattr(core, "TIMEOUT_GRACE_S", 0.05)
+        stalls = self.stalling_slot("stalls", monkeypatch)
+        with pytest.raises(core.AllProvidersUnavailable):
+            await router(stalls).ainvoke("coordinator", [])
+
+    async def test_the_next_provider_answers_instead(self, monkeypatch):
+        monkeypatch.setattr(core, "REQUEST_TIMEOUT_S", 0)
+        monkeypatch.setattr(core, "TIMEOUT_GRACE_S", 0.05)
+        stalls = self.stalling_slot("stalls", monkeypatch)
+        result = await router(stalls, slot("quick")).ainvoke("coordinator", [])
+        assert result is not None
+
+    async def test_a_stalled_slot_is_not_retried_on_the_spot(self, monkeypatch):
+        """Retrying it would spend the whole deadline over again."""
+        monkeypatch.setattr(core, "REQUEST_TIMEOUT_S", 0)
+        monkeypatch.setattr(core, "TIMEOUT_GRACE_S", 0.05)
+        stalls = self.stalling_slot("stalls", monkeypatch)
+        attempts = []
+        original = stalls.build_model
+        monkeypatch.setattr(stalls, "build_model",
+                            lambda: (attempts.append(1), original())[1])
+        with pytest.raises(core.AllProvidersUnavailable):
+            await router(stalls).ainvoke("coordinator", [])
+        assert len(attempts) == 1, f"tried the stalled slot {len(attempts)} times"

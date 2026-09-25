@@ -1,5 +1,7 @@
 """The whole graph, end to end, against the scripted model."""
 
+import asyncio
+
 import pytest
 from pydantic import ValidationError
 
@@ -289,3 +291,103 @@ class TestPlanSize:
     async def test_the_prompt_states_the_workflows_own_ceiling(self, graph_env):
         """The planner is told the number it should plan to, not the global backstop."""
         assert "{max_plan_steps}" in core.COORDINATOR_PLAN_PROMPT
+
+
+class TestTraceCarriesLatency:
+    async def test_a_completed_call_records_how_long_it_took(self, graph_env):
+        """The renderer has always shown a latency column; the relay never filled it,
+        so every timing the router measured was dropped on the way to the trace."""
+        _, view = await run_to_gate()
+        # Per node, because the relay is written out once per node and one missing
+        # copy hides the calls that dominate a run. Demo mode builds the brief from
+        # tool output, so synthesis makes no provider call here and cannot be checked.
+        done = [e for e in view.trace if e.get("kind") == "done" and e.get("provider")]
+        nodes = {e.get("node") for e in done}
+        assert {"plan", "run_step"} <= nodes, f"expected model calls, saw {nodes}"
+        for node in nodes:
+            timed = [e for e in done if e.get("node") == node]
+            # "is not None": a scripted call really does take 0 ms, and a truthiness
+            # check would read that as a missing measurement.
+            assert any(e.get("latency_ms") is not None for e in timed), \
+                f"{node} lost its latency"
+
+
+class TestARunSurvivesARestart:
+    """The checkpoint holds the work; losing the index should not lose the run."""
+
+    async def test_a_pending_approval_is_recovered(self, graph_env):
+        run_id, before = await run_to_gate()
+        assert before.status == "awaiting_approval"
+
+        # What a restart leaves behind: the checkpoint on disk, no index in memory.
+        core._RUNS.clear()
+
+        view = await core.get_run(run_id)
+        assert view.status == "awaiting_approval"
+        assert view.brief, "the recovered run has no brief"
+        assert view.workflow_id == before.workflow_id
+
+    async def test_the_recovered_run_can_still_be_decided(self, graph_env):
+        """Recovery is only worth having if the reviewer can finish the job."""
+        run_id, _ = await run_to_gate()
+        core._RUNS.clear()
+
+        view = await core.submit_decision(
+            run_id, {"action": "approve", "reviewer": "Arnav"}
+        )
+        assert view.status == "approved"
+
+    async def test_an_id_that_was_never_a_run_still_reports_plainly(self, graph_env):
+        with pytest.raises(KeyError, match="expired"):
+            await core.get_run("0" * 32)
+
+
+class TestIdempotentStarts:
+    """A run costs real provider quota, so a retry must not buy a second one."""
+
+    async def test_the_same_key_returns_the_same_run(self, graph_env):
+        first = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                     _DEFAULT_INPUTS, idempotency_key="k-1")
+        await core.wait_for_run(first)
+        second = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                      _DEFAULT_INPUTS, idempotency_key="k-1")
+        assert second == first
+
+    async def test_no_second_run_is_started(self, graph_env):
+        """The identity check is worth nothing if the work happens anyway."""
+        await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                             _DEFAULT_INPUTS, idempotency_key="k-2")
+        assert len(core._RUNS) == 1
+        await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                             _DEFAULT_INPUTS, idempotency_key="k-2")
+        assert len(core._RUNS) == 1, "the retry started another run"
+
+    async def test_different_keys_are_different_runs(self, graph_env):
+        a = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                 _DEFAULT_INPUTS, idempotency_key="k-3")
+        b = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                 _DEFAULT_INPUTS, idempotency_key="k-4")
+        assert a != b
+
+    async def test_no_key_means_no_sharing(self, graph_env):
+        """Clients that send nothing keep the old behaviour."""
+        a = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                 _DEFAULT_INPUTS)
+        b = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                 _DEFAULT_INPUTS)
+        assert a != b
+
+    async def test_racing_requests_cannot_both_get_through(self, graph_env):
+        """The key is recorded before the work starts, not after it finishes."""
+        a, b = await asyncio.gather(
+            core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                           _DEFAULT_INPUTS, idempotency_key="k-5"),
+            core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                           _DEFAULT_INPUTS, idempotency_key="k-5"),
+        )
+        assert a == b, "two racing retries each started a run"
+
+    async def test_the_key_map_does_not_grow_without_bound(self, graph_env):
+        for n in range(core.MAX_IDEMPOTENCY_KEYS + 20):
+            core.remember_key(f"key-{n}", f"run-{n}")
+        assert len(core._IDEMPOTENT) <= core.MAX_IDEMPOTENCY_KEYS

@@ -112,3 +112,40 @@ class TestNumbersAreCopiedFromTools:
         assert "data = draft_from_tool_output(payloads).data" in source, (
             "a live step must report the data its tools returned, not the model's"
         )
+
+
+class TestFinishingFromTheAgentsOwnAnswer:
+    """A step's closing prose is its summary; restating it costs a call per step."""
+
+    def test_the_agents_words_are_kept(self):
+        prose = "Pc rose to 3.0e-04 across four messages, above the red threshold."
+        draft = core.draft_from_reply(prose, [("pc_trend", {"latest_pc": 3.0e-4})])
+        assert draft.summary == prose
+
+    def test_the_numbers_still_come_from_the_tools(self):
+        """The prose is the model's; the data is not."""
+        draft = core.draft_from_reply(
+            "I reckon the miss distance was about 900 m.",
+            [("parse_cdm", {"miss_distance_m": 570.272, "count": 4})],
+        )
+        assert draft.data["parse_cdm"]["miss_distance_m"] == 570.272
+
+    def test_a_failed_tool_still_makes_the_step_partial(self):
+        draft = core.draft_from_reply("All good.", [("check_limits", {"error": "'quantity'"})])
+        assert draft.status == "partial"
+
+    def test_gaps_are_taken_from_what_the_tools_reported(self):
+        draft = core.draft_from_reply(
+            "The ticket is missing fields.",
+            [("validate_ticket", {"problems": ["quantity absent", "no limit_price"]})],
+        )
+        assert draft.missing_inputs == ["quantity absent", "no limit_price"]
+
+    def test_tool_gaps_are_deduplicated_and_capped(self):
+        payloads = [("a", {"problems": ["x", "x"]}), ("b", {"missing": ["x", "y"]})]
+        assert core.missing_from_tools(payloads) == ["x", "y"]
+
+    def test_a_silent_agent_falls_back_to_the_tool_summary(self):
+        """Nothing written means nothing to keep, so the tool account stands in."""
+        draft = core.draft_from_reply("", [("parse_cdm", {"count": 4})])
+        assert draft.summary and "parse_cdm" in draft.summary
