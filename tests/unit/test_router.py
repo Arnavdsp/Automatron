@@ -459,3 +459,77 @@ class TestTheDeadlineIsEnforced:
         with pytest.raises(core.AllProvidersUnavailable):
             await router(stalls).ainvoke("coordinator", [])
         assert len(attempts) == 1, f"tried the stalled slot {len(attempts)} times"
+
+
+class TestPacingAllowsAShortBurst:
+    """Providers limit a rate over a minute, not the gap between two calls."""
+
+    def test_a_slot_can_open_without_waiting_out_an_interval(self):
+        s = slot("paced", rpm=20)
+        # A bucket of one made the very first call of a run wait 3s before it was
+        # even attempted, and every call after it too.
+        assert s.limiter.max_bucket_size == core.RATE_BURST > 1
+
+    def test_the_average_rate_still_follows_rpm(self):
+        s = slot("paced", rpm=20)
+        assert s.limiter.requests_per_second == 20 / 60.0
+
+    def test_a_slow_provider_is_still_paced_slowly(self):
+        s = slot("careful", rpm=5)
+        assert s.limiter.requests_per_second == 5 / 60.0
+
+
+class TestAskingForTheToolCallOutright:
+    """A step's numbers have to come from a tool, so an agent's opening turn has no
+    prose-only answer worth having. Providers can be told that up front."""
+
+    def recording_slot(self, name, provider, monkeypatch, refuses=False):
+        seen = []
+
+        class Records:
+            def bind_tools(self, tools, **kwargs):
+                seen.append(kwargs.get("tool_choice"))
+                if refuses and "tool_choice" in kwargs:
+                    raise ValueError("tool_choice is not supported by this model")
+                return self
+
+            async def ainvoke(self, messages):
+                return core.AIMessage(content="answered")
+
+        s = slot(name, provider=provider)
+        monkeypatch.setattr(s, "build_model", lambda: Records())
+        return s, seen
+
+    async def test_the_provider_is_asked_in_its_own_wording(self, monkeypatch):
+        s, seen = self.recording_slot("m", "mistral", monkeypatch)
+        await router(s).ainvoke("analyst", [], tools=[object()], require_tool=True)
+        assert seen == ["any"]
+
+    async def test_an_openai_shaped_provider_gets_the_other_spelling(self, monkeypatch):
+        s, seen = self.recording_slot("g", "groq", monkeypatch)
+        await router(s).ainvoke("analyst", [], tools=[object()], require_tool=True)
+        assert seen == ["required"]
+
+    async def test_later_turns_are_left_free_to_stop(self, monkeypatch):
+        # A model never allowed to answer in prose can never finish the step.
+        s, seen = self.recording_slot("m", "mistral", monkeypatch)
+        await router(s).ainvoke("analyst", [], tools=[object()])
+        assert seen == [None]
+
+    async def test_a_provider_that_refuses_is_asked_again_plainly(self, monkeypatch):
+        s, seen = self.recording_slot("m", "mistral", monkeypatch, refuses=True)
+        reply = await router(s).ainvoke("analyst", [], tools=[object()], require_tool=True)
+        assert core.message_text(reply) == "answered"
+        assert seen == ["any", None], "it did not fall back to an ordinary call"
+
+    async def test_refusing_does_not_cost_the_slot(self, monkeypatch):
+        """The forced call is an optimisation; a provider that will not take it is
+        still a healthy provider."""
+        s, _ = self.recording_slot("m", "mistral", monkeypatch, refuses=True)
+        await router(s).ainvoke("analyst", [], tools=[object()], require_tool=True)
+        assert s.available_now()[0]
+
+    async def test_an_unlisted_provider_is_simply_asked(self, monkeypatch):
+        s, seen = self.recording_slot("n", "newcomer", monkeypatch)
+        await router(s).ainvoke("analyst", [], tools=[object()], require_tool=True)
+        assert seen == [None]
