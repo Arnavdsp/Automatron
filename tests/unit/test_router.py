@@ -459,3 +459,21 @@ class TestTheDeadlineIsEnforced:
         with pytest.raises(core.AllProvidersUnavailable):
             await router(stalls).ainvoke("coordinator", [])
         assert len(attempts) == 1, f"tried the stalled slot {len(attempts)} times"
+
+
+class TestPacingAllowsAShortBurst:
+    """Providers limit a rate over a minute, not the gap between two calls."""
+
+    def test_a_slot_can_open_without_waiting_out_an_interval(self):
+        s = slot("paced", rpm=20)
+        # A bucket of one made the very first call of a run wait 3s before it was
+        # even attempted, and every call after it too.
+        assert s.limiter.max_bucket_size == core.RATE_BURST > 1
+
+    def test_the_average_rate_still_follows_rpm(self):
+        s = slot("paced", rpm=20)
+        assert s.limiter.requests_per_second == 20 / 60.0
+
+    def test_a_slow_provider_is_still_paced_slowly(self):
+        s = slot("careful", rpm=5)
+        assert s.limiter.requests_per_second == 5 / 60.0

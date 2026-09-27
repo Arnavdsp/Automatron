@@ -83,7 +83,20 @@ python tests/eval/run_eval.py           # golden scenarios
 No keys are needed to try it: with `AUTOMATRON_FAKE_LLM=1` the real tools still run
 and only the model is replaced, so every workflow is demonstrable offline.
 
-### Retrying a request
+### Running it on Cloud Run
+
+A run continues after the request that started it returns, so the service needs
+CPU outside request processing. Without it the run only advances while something
+is polling it:
+
+```bash
+gcloud run services update automatron --region <region> --no-cpu-throttling
+```
+
+Place the service near the model providers rather than near its users: a run makes
+more calls to them than a reviewer makes to it.
+
+## Retrying a request
 
 `POST /api/v1/runs` accepts an `Idempotency-Key` header. A repeat of the same key
 returns the run it already started, marked `"replayed": true`, instead of starting
