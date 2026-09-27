@@ -1,7 +1,9 @@
 """The interface assembles, and the sector switch changes what the spec says it should."""
 
+import asyncio
 import re
 
+import gradio as gr
 import pytest
 
 import automatron_core as core
@@ -240,3 +242,103 @@ class TestStyling:
             if line.strip() and not line.strip().startswith(("/*", "*", "*/"))
         ]
         assert len(rules) < 200, f"{len(rules)} styling lines"
+
+
+def events_of(demo):
+    """The handlers a built interface wired up, whichever shape Gradio stores them in."""
+    fns = demo.fns
+    return list(fns.values()) if isinstance(fns, dict) else list(fns)
+
+
+class TestItReportsProgressOnlyWhereThereIsAny:
+    """Gradio's default paints a spinner over every output of every event. On a
+    page whose handlers mostly read state already in memory, that reads as the
+    interface stalling on work it is not doing."""
+
+    def test_no_handler_dims_all_of_its_outputs(self, ui_env):
+        loud = [fn for fn in events_of(core.build_interface()) if fn.show_progress == "full"]
+        assert not loud, f"{len(loud)} handler(s) still report full progress"
+
+    def test_the_sector_switch_reports_nothing(self, ui_env):
+        # It reads the registry and returns; there is no round trip worth showing.
+        assert events_of(core.build_interface())[0].show_progress == "hidden"
+
+    def test_a_run_reports_on_the_status_line_alone(self, ui_env):
+        run = next(fn for fn in events_of(core.build_interface())
+                   if fn.show_progress == "minimal" and len(fn.outputs) == 10)
+        assert [getattr(c, "elem_id", None) for c in run.show_progress_on] == [None]
+        assert run.show_progress_on[0] is run.outputs[0]
+
+
+class TestSwitchingSectorLeavesNothingOfTheLastRun:
+    def test_the_previous_run_is_let_go_of(self, ui_env):
+        switch = events_of(core.build_interface())[0]
+        returned = dict(zip(switch.outputs, switch.fn("space"), strict=True))
+        held = [component for component in switch.outputs
+                if type(component).__name__ == "State"]
+        assert held, "the run id is not among the outputs"
+        assert all(returned[component] == "" for component in held)
+
+    def test_the_previous_run_s_downloads_go(self, ui_env):
+        switch = events_of(core.build_interface())[0]
+        returned = dict(zip(switch.outputs, switch.fn("space"), strict=True))
+        buttons = [component for component in switch.outputs
+                   if type(component).__name__ == "DownloadButton"]
+        assert len(buttons) == 2
+        assert all(returned[button].get("visible") is False for button in buttons)
+
+
+def running_view(trace):
+    return core.RunView(run_id="run-1", sector="space", workflow_id="space.probe",
+                        status="running", brief=None, trace=trace,
+                        awaiting_approval=False)
+
+
+class TestTheTraceRepaintsOnAClockNotPerEvent:
+    """Steps report in bursts. Redrawing the whole trace once per row arriving is
+    what makes a long run feel heavier the further into it you get."""
+
+    def run_handler(self, demo):
+        return next(fn for fn in events_of(demo)
+                    if fn.show_progress == "minimal" and len(fn.outputs) == 10)
+
+    async def drain(self, ui_env, monkeypatch, events, view, gap=0.0):
+        async def fake_stream(run_id, poll_seconds=0.4):
+            for index, event in enumerate(events):
+                if gap and index:
+                    await asyncio.sleep(gap)
+                yield event
+
+        monkeypatch.setattr(core, "start_run", lambda *a, **k: _resolved("run-1"))
+        monkeypatch.setattr(core, "stream_events", fake_stream)
+        monkeypatch.setattr(core, "get_run", lambda run_id: _resolved(view))
+        handler = self.run_handler(core.build_interface()).fn
+        return [frame async for frame in handler("space", "space.probe", "go", "{}", [])]
+
+    async def test_a_burst_of_events_is_one_frame(self, ui_env, monkeypatch):
+        view = running_view([])
+        frames = await self.drain(ui_env, monkeypatch, [{"kind": "done"}] * 40, view)
+        # One reset, at most one throttled frame for the burst, one final frame.
+        assert len(frames) <= 3, f"{len(frames)} repaints for one burst of 40 events"
+
+    async def test_the_panels_built_from_the_brief_wait_for_one(self, ui_env, monkeypatch):
+        """Until synthesis there is no brief, so sending the evidence table and the
+        JSON view their own unchanged empty state every frame is wasted payload."""
+        view = running_view([{"kind": "done", "message": "m", "agent": "analyst",
+                              "at": "2026-01-01T00:00:00Z"}])
+        # Spread over more than one repaint window, so frames do get through and
+        # the assertion is about what they carry rather than that there are none.
+        frames = await self.drain(ui_env, monkeypatch, [{"kind": "done"}] * 3, view,
+                                  gap=core.UI_REPAINT_SECONDS + 0.1)
+        streamed = frames[1:-1]
+        assert streamed, "the run never painted a frame while it was working"
+        for frame in streamed:
+            for index in (1, 3, 4):  # brief, evidence, JSON
+                assert isinstance(frame[index], type(gr.skip())), (
+                    f"output {index} was re-sent with nothing new in it")
+
+
+def _resolved(value):
+    async def wait():
+        return value
+    return wait()
