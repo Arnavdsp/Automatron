@@ -37,6 +37,15 @@ async def run_to_gate(request="Assess probe-1.", inputs=_DEFAULT_INPUTS):
     return run_id, await core.get_run(run_id)
 
 
+# The workflow's standard request is planned by the workflow itself, so a test that
+# needs to watch the coordinator work has to ask for something else.
+CUSTOM_REQUEST = "Assess probe-1, and say which ground station should be told first."
+
+
+async def run_with_planning():
+    return await run_to_gate(request=CUSTOM_REQUEST)
+
+
 class TestHappyPath:
     async def test_run_reaches_the_approval_gate(self, graph_env):
         _, view = await run_to_gate()
@@ -283,7 +292,7 @@ class TestPlanSize:
             "steps": testsector.FAKE_SCRIPT,
             "structured": {**testsector.STRUCTURED, "Plan": oversized},
         }
-        _, view = await run_to_gate()
+        _, view = await run_with_planning()
         assert any("more than the" in e["message"] for e in view.trace)
         ran = {e["step_id"] for e in view.trace if e.get("step_id")}
         assert len(ran) <= designed
@@ -297,7 +306,7 @@ class TestTraceCarriesLatency:
     async def test_a_completed_call_records_how_long_it_took(self, graph_env):
         """The renderer has always shown a latency column; the relay never filled it,
         so every timing the router measured was dropped on the way to the trace."""
-        _, view = await run_to_gate()
+        _, view = await run_with_planning()
         # Per node, because the relay is written out once per node and one missing
         # copy hides the calls that dominate a run. Demo mode builds the brief from
         # tool output, so synthesis makes no provider call here and cannot be checked.
@@ -391,3 +400,62 @@ class TestIdempotentStarts:
         for n in range(core.MAX_IDEMPOTENCY_KEYS + 20):
             core.remember_key(f"key-{n}", f"run-{n}")
         assert len(core._IDEMPOTENT) <= core.MAX_IDEMPOTENCY_KEYS
+
+
+class TestAStandardRequestIsNotPlannedTwice:
+    """A workflow ships the plan its author wrote for its own inputs. Asking a model
+    to produce one for that exact request returns the authored plan at the cost of a
+    round trip, which on a measured live run was 8.3s of a 128s run."""
+
+    async def test_the_workflows_own_plan_is_used_without_a_call(self, graph_env):
+        _, view = await run_to_gate()
+        planning = [e for e in view.trace if e["node"] == "plan" and e.get("provider")]
+        assert not planning, f"the coordinator was still called: {planning}"
+
+    async def test_it_says_so_rather_than_skipping_quietly(self, graph_env):
+        _, view = await run_to_gate()
+        said = [e["message"] for e in view.trace if e["node"] == "plan"]
+        assert any("the workflow's own plan" in m for m in said), said
+
+    async def test_the_steps_are_the_ones_the_workflow_designed(self, graph_env):
+        run_id, _ = await run_to_gate()
+        planned = core._RUNS[run_id]["state"]["plan"]["steps"]
+        assert [s["id"] for s in planned] == [s.id for s in testsector.DEFAULT_PLAN.steps]
+
+    async def test_a_differently_worded_request_is_planned(self, graph_env):
+        """The wording is the whole reason the coordinator exists."""
+        _, view = await run_with_planning()
+        assert [e for e in view.trace if e["node"] == "plan" and e.get("provider")]
+
+
+class TestWhatCountsAsAlreadyDecided:
+    def spec(self, graph_env):
+        return graph_env.workflow(testsector.WORKFLOW_ID)
+
+    def test_the_standard_request_with_valid_inputs(self, graph_env):
+        assert core.plan_is_already_decided(
+            self.spec(graph_env), "Assess probe-1.", dict(_DEFAULT_INPUTS)) is True
+
+    def test_an_empty_request_leaves_the_workflow_to_decide(self, graph_env):
+        assert core.plan_is_already_decided(
+            self.spec(graph_env), "", dict(_DEFAULT_INPUTS)) is True
+
+    def test_wording_of_its_own_is_planned(self, graph_env):
+        assert core.plan_is_already_decided(
+            self.spec(graph_env), CUSTOM_REQUEST, dict(_DEFAULT_INPUTS)) is False
+
+    def test_inputs_the_schema_rejects_are_planned(self, graph_env):
+        assert core.plan_is_already_decided(
+            self.spec(graph_env), "Assess probe-1.", {"subject": 17}) is False
+
+    def test_missing_inputs_are_planned(self, graph_env):
+        assert core.plan_is_already_decided(
+            self.spec(graph_env), "Assess probe-1.", {}) is False
+
+    def test_intakes_own_bookkeeping_does_not_count_as_an_input(self, graph_env):
+        """Intake adds _missing to the inputs; the schema never knew about it."""
+        assert core.plan_is_already_decided(
+            self.spec(graph_env), "Assess probe-1.", {"_missing": ["x"]}) is False
+        assert core.plan_is_already_decided(
+            self.spec(graph_env), "Assess probe-1.",
+            {**_DEFAULT_INPUTS, "_missing": []}) is True
