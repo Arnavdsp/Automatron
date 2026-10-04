@@ -15,7 +15,7 @@ import uuid
 import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-MIGRATION = ROOT / "supabase" / "migrations" / "20261004000001_tenant_isolation.sql"
+MIGRATIONS = sorted((ROOT / "supabase" / "migrations").glob("*.sql"))
 STUB = ROOT / "tests" / "sql" / "supabase_stub.sql"
 
 
@@ -98,7 +98,8 @@ def db():
     try:
         database.start()
         database.psql(STUB.read_text(encoding="utf-8"))
-        database.psql(MIGRATION.read_text(encoding="utf-8"))
+        for migration in MIGRATIONS:
+            database.psql(migration.read_text(encoding="utf-8"))
         yield database
     except subprocess.CalledProcessError as exc:
         raise AssertionError(f"{exc.cmd[-1]}: {exc.stderr}") from exc
@@ -121,8 +122,8 @@ def people(db):
         ).stdout.strip()
     run = str(uuid.uuid4())
     db.as_user(ids["alice"], "insert into public.runs (id, organization_id, sector, "
-               f"workflow_id, status) values ('{run}', '{ids['alice_org']}', 'space', "
-               "'space.conjunction_triage', 'awaiting_approval');")
+               f"workflow_id, status, {SEALED_COLUMNS}) values ('{run}', '{ids['alice_org']}', "
+               f"'space', 'space.conjunction_triage', 'awaiting_approval', {SEALED_VALUES});")
     ids["alice_run"] = run
     return ids
 
@@ -130,11 +131,17 @@ def people(db):
 def new_run(db, user, org, run_id=None):
     run_id = run_id or str(uuid.uuid4())
     db.as_user(user, "insert into public.runs (id, organization_id, sector, workflow_id, "
-               f"status) values ('{run_id}', '{org}', 'quant', 'quant.trade_gate', 'queued');")
+               f"status, {SEALED_COLUMNS}) values ('{run_id}', '{org}', 'quant', "
+               f"'quant.trade_gate', 'queued', {SEALED_VALUES});")
     return run_id
 
 
 HASH = "a" * 64
+# What the application stores: a wrapped run key and sealed values. Their contents
+# do not matter here; only that they have the sealed shape the database insists on.
+SEALED_COLUMNS = "key_id, wrapped_key, sealed_input"
+SEALED_VALUES = "'local:k1', 'd3JhcHBlZC1ydW4ta2V5', 'v1.c2VhbGVk'"
+SEALED_PAYLOAD = '{"action": "approve", "sealed": "v1.c2VhbGVk"}'
 
 
 class TestSignupGivesEachUserTheirOwnOrganization:
@@ -165,8 +172,9 @@ class TestRunsStayInsideTheirOrganization:
     def test_a_run_cannot_claim_another_creator(self, db, people):
         with pytest.raises(PermissionError, match="row-level security"):
             db.as_user(people["bob"], "insert into public.runs (id, organization_id, created_by, "
-                       f"sector, workflow_id, status) values ('{uuid.uuid4()}', "
-                       f"'{people['bob_org']}', '{people['alice']}', 'space', 'x', 'queued');")
+                       f"sector, workflow_id, status, {SEALED_COLUMNS}) values "
+                       f"('{uuid.uuid4()}', '{people['bob_org']}', '{people['alice']}', "
+                       f"'space', 'x', 'queued', {SEALED_VALUES});")
 
     def test_another_user_cannot_change_its_status(self, db, people):
         db.as_user(people["bob"], "update public.runs set status = 'approved' "
@@ -189,7 +197,7 @@ class TestTheAuditTrail:
     def test_an_entry_is_readable_only_inside_its_organization(self, db, people):
         db.as_user(people["alice"], "insert into public.audit_entries (run_id, organization_id, "
                    f"payload, prev_hash, hash) values ('{people['alice_run']}', "
-                   f"'{people['alice_org']}', '{{\"action\": \"approve\"}}', '{'0' * 64}', "
+                   f"'{people['alice_org']}', '{SEALED_PAYLOAD}', '{'0' * 64}', "
                    f"'{HASH}');")
         assert db.as_user(people["alice"], "select count(*) from public.audit_entries;") == "1"
         assert db.as_user(people["bob"], "select count(*) from public.audit_entries;") == "0"
@@ -200,14 +208,14 @@ class TestTheAuditTrail:
         with pytest.raises(PermissionError, match="foreign key"):
             db.as_user(people["bob"], "insert into public.audit_entries (run_id, "
                        f"organization_id, payload, prev_hash, hash) values "
-                       f"('{people['alice_run']}', '{people['bob_org']}', '{{}}', "
+                       f"('{people['alice_run']}', '{people['bob_org']}', '{SEALED_PAYLOAD}', "
                        f"'{HASH}', '{HASH}');")
 
     def test_an_entry_cannot_be_written_into_another_organization(self, db, people):
         with pytest.raises(PermissionError, match="row-level security"):
             db.as_user(people["bob"], "insert into public.audit_entries (run_id, "
                        f"organization_id, payload, prev_hash, hash) values "
-                       f"('{people['alice_run']}', '{people['alice_org']}', '{{}}', "
+                       f"('{people['alice_run']}', '{people['alice_org']}', '{SEALED_PAYLOAD}', "
                        f"'{HASH}', '{HASH}');")
 
     def test_no_one_can_rewrite_it_not_even_the_database_owner(self, db, people):
@@ -269,3 +277,54 @@ class TestUploads:
     def test_the_bucket_is_private(self, db, people):
         assert db.psql("select public from storage.buckets where id = 'run-uploads';"
                        ).stdout.strip() == "f"
+
+
+class TestOnlyCiphertextIsStored:
+    """The application seals run content before storing it. The database holds it to
+    that, so plaintext cannot reach these columns even through a bug."""
+
+    def insert(self, db, people, **overrides):
+        values = {"key_id": "'local:k1'", "wrapped_key": "'d3JhcHBlZC1ydW4ta2V5'",
+                  "sealed_input": "'v1.c2VhbGVk'", **overrides}
+        db.as_user(people["alice"], "insert into public.runs (id, organization_id, sector, "
+                   f"workflow_id, status, key_id, wrapped_key, sealed_input) values "
+                   f"('{uuid.uuid4()}', '{people['alice_org']}', 'space', 'x', 'queued', "
+                   f"{values['key_id']}, {values['wrapped_key']}, {values['sealed_input']});")
+
+    def test_a_sealed_run_is_accepted(self, db, people):
+        self.insert(db, people)
+
+    def test_a_plaintext_request_is_refused(self, db, people):
+        with pytest.raises(PermissionError, match="check constraint"):
+            self.insert(db, people, sealed_input="'Triage CDM for SAT-123 tonight'")
+
+    def test_a_run_without_its_key_is_refused(self, db, people):
+        with pytest.raises(PermissionError, match="null value|check constraint"):
+            self.insert(db, people, wrapped_key="null")
+
+    def test_an_unrecognised_key_reference_is_refused(self, db, people):
+        with pytest.raises(PermissionError, match="check constraint"):
+            self.insert(db, people, key_id="'plaintext'")
+
+    def test_a_plaintext_result_is_refused(self, db, people):
+        with pytest.raises(PermissionError, match="check constraint"):
+            db.as_user(people["alice"], "update public.runs set sealed_result = "
+                       f"'the brief in the clear' where id = '{people['alice_run']}';")
+
+    def test_the_creator_can_record_a_sealed_result(self, db, people):
+        db.as_user(people["alice"], "update public.runs set sealed_result = 'v1.cmVzdWx0' "
+                   f"where id = '{people['alice_run']}';")
+
+    def test_the_input_and_key_cannot_be_rewritten(self, db, people):
+        for column in ("sealed_input", "wrapped_key", "key_id"):
+            with pytest.raises(PermissionError, match="permission denied"):
+                db.as_user(people["alice"], f"update public.runs set {column} = "
+                           f"'v1.b3RoZXI' where id = '{people['alice_run']}';")
+
+    def test_an_audit_payload_must_be_sealed(self, db, people):
+        with pytest.raises(PermissionError, match="check constraint"):
+            db.as_user(people["alice"], "insert into public.audit_entries (run_id, "
+                       "organization_id, payload, prev_hash, hash) values "
+                       f"('{people['alice_run']}', '{people['alice_org']}', "
+                       "'{\"action\": \"approve\", \"notes\": \"in the clear\"}', "
+                       f"'{HASH}', '{HASH}');")
