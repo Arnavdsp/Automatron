@@ -310,7 +310,7 @@ class TestTheTraceRepaintsOnAClockNotPerEvent:
                     if fn.show_progress == "minimal" and len(fn.outputs) == 10)
 
     async def drain(self, ui_env, monkeypatch, events, view, gap=0.0):
-        async def fake_stream(run_id, poll_seconds=0.4):
+        async def fake_stream(run_id, poll_seconds=0.4, owner_id=None):
             for index, event in enumerate(events):
                 if gap and index:
                     await asyncio.sleep(gap)
@@ -318,7 +318,7 @@ class TestTheTraceRepaintsOnAClockNotPerEvent:
 
         monkeypatch.setattr(core, "start_run", lambda *a, **k: _resolved("run-1"))
         monkeypatch.setattr(core, "stream_events", fake_stream)
-        monkeypatch.setattr(core, "get_run", lambda run_id: _resolved(view))
+        monkeypatch.setattr(core, "get_run", lambda run_id, owner_id=None: _resolved(view))
         handler = self.run_handler(core.build_interface()).fn
         return [frame async for frame in handler("space", "space.probe", "go", "{}", [])]
 
@@ -363,17 +363,18 @@ class TestAskingTwiceDoesNotBuyTwoRuns:
     async def press_run(self, monkeypatch, started, view, request="go", inputs="{}"):
         keys = []
 
-        async def fake_start(sector, workflow_id, req, ins, uploads, idempotency_key=""):
+        async def fake_start(sector, workflow_id, req, ins, uploads, idempotency_key="",
+                             owner_id=core.LOCAL_TENANT):
             keys.append(idempotency_key)
             return started
 
-        async def fake_stream(run_id, poll_seconds=0.4):
+        async def fake_stream(run_id, poll_seconds=0.4, owner_id=None):
             for event in []:
                 yield event
 
         monkeypatch.setattr(core, "start_run", fake_start)
         monkeypatch.setattr(core, "stream_events", fake_stream)
-        monkeypatch.setattr(core, "get_run", lambda run_id: _resolved(view))
+        monkeypatch.setattr(core, "get_run", lambda run_id, owner_id=None: _resolved(view))
         handler = self.run_handler(core.build_interface()).fn
         frames = [frame async for frame in
                   handler("space", "space.probe", request, inputs, [])]
