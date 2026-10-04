@@ -389,3 +389,72 @@ is ever passed to `nltk` as a filename.
 The suppression is pinned to that one advisory ID rather than to the package, so any
 other finding against `nltk` still fails the build. Revisit when a fixed release
 exists: drop the flag and let the audit confirm it.
+
+## D41 — A run id is an identifier, never a credential
+
+Every route that takes a run id checks that the authenticated caller owns the run,
+and a run owned by someone else fails with exactly the error a nonexistent run
+gives. A distinct "forbidden" would confirm that the id exists, which is itself a
+leak. The check runs in every mode rather than only with Supabase: without it there
+is simply one owner, so the code path that protects real tenants is the one every
+test and every local run exercises.
+
+The owner is declared in the graph's state schema. LangGraph keeps only declared
+keys, so an owner passed in the initial payload but not declared would be silently
+dropped from the checkpoint, and a run recovered after a restart would come back
+belonging to nobody. A test recovers a run and checks its owner for this reason.
+
+The audit entry records both the reviewer name that was typed and the principal the
+server authenticated. The name is what the reviewer chose to sign; the principal is
+who actually did.
+
+## D42 — Supabase tokens are verified locally
+
+Calling the auth server's user endpoint on every request would add a network round
+trip to each API call and make the auth server a dependency of every read. Tokens
+signed with an asymmetric key are verified against the project's published key set
+instead, cached for ten minutes. The algorithm is taken from the key, never from
+the token, which closes the confusion attack where a public key is used as an HMAC
+secret. An unknown key id refetches the set, but at most once every thirty seconds,
+so a stream of invented key ids cannot turn this service into an amplifier against
+the auth server.
+
+Shared-secret (HS256) tokens are checked with the auth server and the answer cached
+for a minute by a hash of the token. Verifying them locally would mean holding the
+project's JWT secret, which can mint a token for any user.
+
+The interface's login form signs in through the same password grant a Supabase
+client uses, and the token it returns is verified like any other before the session
+is accepted.
+
+## D43 — Metrics in-process, with a page of their own
+
+The service exports Prometheus metrics and also keeps the last hour of detail in
+memory, which the dashboard at `/ops` reads. On a free, single-instance deployment
+there is usually no Prometheus scraping it, and a dashboard that needs one would
+show nothing. Where one does scrape, it gets the long history, and the in-memory
+window costs a few hundred kilobytes.
+
+Route labels use the route template. A path label would put every run id into the
+label set and grow the metric without bound. The dashboard and `/metrics` sit behind
+the operator credential in every mode, since they span all tenants. A request with
+no credential is not counted as a security event: a browser always makes one before
+showing its Basic prompt, and counting it would fill the panel with page loads.
+
+## D44 — One evaluator, online and offline
+
+The golden suite's checks moved into the core module as `evaluate_run`, which now
+also scores every live run when it reaches the gate. The suite adds only each
+scenario's expectations. Keeping one implementation means a run on the dashboard
+and a run in the suite are judged identically, and a check tightened for one is
+tightened for both.
+
+Latency is judged only on live providers, where the scripted model's instant
+answers would make it meaningless. The checks stay deterministic. A model grading
+another model's brief would be one more unverified opinion in a system whose point
+is that every number comes from a tool.
+
+Scoring the offline model's runs concurrently shows them degraded, because the
+scripted model is one shared script, not because of the system under test. The
+suite runs its scenarios one at a time for that reason.
+
