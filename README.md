@@ -123,7 +123,8 @@ seen the key.
 
 ## Multiple users
 
-Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` and Automatron becomes multi-user:
+Set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and a run encryption key (below) and
+Automatron becomes multi-user:
 
 - API callers send a Supabase access token (`Authorization: Bearer …`). It is
   verified locally against the project's published signing keys, with issuer,
@@ -152,6 +153,55 @@ throwaway PostgreSQL and attacks it as each role.
 
 Without Supabase there is one operator, behind `APP_PASSWORD` when it is set, and
 every run belongs to them.
+
+## Where runs are stored, and how
+
+Run content is encrypted by the application before it is written anywhere, so
+storage only ever holds ciphertext:
+
+- **Per-run keys.** Each run gets its own AES-256-GCM data key. That key is stored
+  only in wrapped form, wrapped by Cloud KMS (`RUN_KMS_KEY`, where the key material
+  never leaves Google's key service and every use is in Cloud Audit Logs) or by a
+  keyring from a secret manager (`RUN_ENCRYPTION_KEYS`).
+- **Bound to run, owner and field.** Every sealed value is tied to all three, so a
+  value copied onto another run, another user's row, or another column of the same
+  run does not decrypt.
+- **The durable record.** In multi-user mode each run is recorded in Supabase
+  before any work starts. The row holds sector, workflow, status and timing in the
+  clear, and the request, inputs, brief, evaluation and trace sealed. The write is
+  made as the signed-in user with the publishable key, so row-level security applies
+  to it; the service never holds a service-role key. If the record cannot be
+  written, the run does not start.
+- **The database holds it to that.** Its checks refuse any value in a sealed column
+  that is not ciphertext, and the request and its key cannot be rewritten after the
+  fact. A leaked backup or a mistaken policy exposes metadata, not content.
+- **Graph checkpoints** hold the run's working state and are encrypted the same
+  way. Their key is stored wrapped beside them, and an unencrypted checkpoint is
+  refused rather than read.
+- **Decisions** are mirrored to the durable audit trail. The action is in the clear,
+  the reviewer and their notes are sealed, and the local log's hash chain is kept.
+
+A run can be read back on any instance, or after a restart that took its
+checkpoint, from the durable record alone. It cannot be decided there, since the
+graph state a decision resumes is not on that instance. That case gets a clear 409
+rather than a guess.
+
+To use Cloud KMS on Cloud Run:
+
+```bash
+gcloud kms keyrings create automatron --location global
+gcloud kms keys create runs --keyring automatron --location global \
+  --purpose encryption --rotation-period 90d \
+  --next-rotation-time "$(date -u -d '+90 days' +%Y-%m-%dT%H:%M:%SZ)"
+gcloud kms keys add-iam-policy-binding runs --keyring automatron --location global \
+  --member "serviceAccount:<run-service-account>" \
+  --role roles/cloudkms.cryptoKeyEncrypterDecrypter
+gcloud run services update automatron --region <region> \
+  --set-env-vars RUN_KMS_KEY=projects/<project>/locations/global/keyRings/automatron/cryptoKeys/runs
+```
+
+The service authenticates to KMS as its own identity, so no credential is
+configured. Revoking that one IAM binding makes every stored run unreadable.
 
 ## Operations dashboard
 
@@ -195,6 +245,7 @@ the app starts in demo mode and says so when no provider key is present.
 | `QDRANT_URL`, `QDRANT_API_KEY` | Vector store. Falls back to local storage when unreachable. |
 | `APP_USERNAME`, `APP_PASSWORD` | The operator credential. Without Supabase it guards the interface and API; **without a password every API route is open**, which is fine locally and not fine anywhere reachable. With Supabase it guards only `/ops` and `/metrics`. |
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | Multi-user mode, described above. Publishable key only. |
+| `RUN_KMS_KEY` or `RUN_ENCRYPTION_KEYS` | The key that wraps each run's data key: a Cloud KMS key name, or `id:base64key,...` (newest first) from a secret manager. Required in multi-user mode. Without either, a single-user setup generates a key beside its runtime data and says so in the log. |
 | `PORT` | Defaults to 7860; Cloud Run injects its own. |
 | `LOG_LEVEL`, `MAX_PARALLEL_STEPS`, `RATE_LIMIT_PER_IP_PER_HOUR` | Runtime tuning. |
 | `RUN_TIMEOUT_S` | A run's ceiling, default 600 s. Free provider tiers queue rather than refuse — a single queued call has been seen taking four minutes — so this allows for a degraded provider chain, not a healthy one. |

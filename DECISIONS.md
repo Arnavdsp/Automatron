@@ -458,3 +458,58 @@ Scoring the offline model's runs concurrently shows them degraded, because the
 scripted model is one shared script, not because of the system under test. The
 suite runs its scenarios one at a time for that reason.
 
+## D45 — Run content is encrypted by the application, per run
+
+Row-level security decides who may read a row. It does nothing for a leaked backup,
+a database administrator, a misconfigured policy, or a support session with the
+database open. Encrypting at the application, before anything is stored, leaves
+those holding ciphertext.
+
+Each run has its own AES-256-GCM data key, wrapped by a key-encryption key that
+the database never sees: Cloud KMS when configured, otherwise a keyring from a
+secret manager. A key per run means one exposed key exposes one run, and
+destroying a run's wrapped key erases it without touching anything else. Every
+sealed value carries its run, owner and field as associated data. That is what
+stops a stored ciphertext being moved somewhere it would be shown to the wrong
+reader, even by someone with write access to the table.
+
+Cloud KMS is preferred over the keyring because its key material cannot be
+exported, every wrap and unwrap is audit-logged, and access is withdrawn by
+removing one IAM binding. Unwrapped run keys are cached in memory, bounded, so a
+run costs one KMS call to create and at most one per instance to read.
+
+The database enforces the format as well. Sealed columns accept only the sealed
+shape, and the request and its key cannot be updated, so a future bug cannot quietly
+start storing plaintext. What stays in the clear is what the policies and the
+dashboard need: sector, workflow, status, timestamps and the decision taken.
+
+## D46 — Durable writes are made as the user, and a run is recorded before it starts
+
+The service could hold a service-role key and write wherever it liked. It holds only
+the publishable key and writes with the signed-in user's own token, so the database
+enforces tenancy on every write the application makes. A bug in the application
+cannot put a run under someone else's organization, because the database will not
+let that user.
+
+The token is held in memory for as long as the run it started needs it, never
+stored or logged. The interface refreshes its session before expiry; the API uses
+whatever token arrives with each request. A write that fails at the gate is retried
+by the next request that touches the run, which carries a fresh token.
+
+The run's record is written before any work begins, and if that write fails the run
+does not start (503, and the idempotency key is released). A run that worked but
+could never be found again after a restart would cost the user the same quota and
+leave no trace.
+
+Checkpoints stay on local disk, encrypted, rather than moving to the database. They
+are written from the background mid-run, where no user token is guaranteed to be
+current, and holding a server credential to the database for them would undo the
+point of D46. The consequence: a run started on one instance can be read on any
+other from its durable record, but decided only where its checkpoint lives. Cloud
+Run session affinity keeps a reviewer on that instance in practice, and the other
+case is a clear 409.
+
+LangGraph's own encrypted serializer reads an unencrypted blob as-is, for migration.
+Here that would let anyone able to write the checkpoint file plant state that is
+then believed, so unencrypted checkpoints are refused.
+
