@@ -310,16 +310,19 @@ def test_health_still_open_when_a_password_is_set(monkeypatch, tmp_path):
 class TestIdempotencyKey:
     """A retried POST must not start a second run."""
 
-    def send(self, client, key):
+    def send(self, client, key, request="Assess probe-1.", address=""):
+        headers = {"Idempotency-Key": key}
+        if address:
+            headers["X-Forwarded-For"] = address
         return client.post(
             f"{API}/runs",
             data={
                 "sector": "space",
                 "workflow_id": testsector.WORKFLOW_ID,
-                "request": "Assess probe-1.",
+                "request": request,
                 "inputs_json": json.dumps({"subject": "probe-1"}),
             },
-            headers={"Idempotency-Key": key},
+            headers=headers,
         )
 
     def test_a_replay_returns_the_first_run(self, client):
@@ -337,6 +340,19 @@ class TestIdempotencyKey:
         one = self.send(client, "abc-789").json()["thread_id"]
         two = self.send(client, "abc-000").json()["thread_id"]
         assert one != two
+
+    def test_another_caller_with_the_same_key_gets_its_own_run(self, client):
+        """A key seen in someone else's request must not hand over their brief."""
+        mine = self.send(client, "shared-1", address="203.0.113.5").json()
+        theirs = self.send(client, "shared-1", address="198.51.100.7").json()
+        assert theirs["thread_id"] != mine["thread_id"]
+        assert "replayed" not in theirs
+
+    def test_a_key_reused_for_a_different_request_is_refused(self, client):
+        assert self.send(client, "reuse-1").status_code == 200
+        other = self.send(client, "reuse-1", request="Assess probe-2.")
+        assert other.status_code == 422
+        assert other.json()["title"] == "idempotency key reused"
 
     def test_without_the_header_every_post_is_a_new_run(self, client):
         assert start(client).json()["thread_id"] != start(client).json()["thread_id"]

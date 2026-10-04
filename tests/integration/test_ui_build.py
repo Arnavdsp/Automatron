@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+import types
 
 import gradio as gr
 import pytest
@@ -360,11 +361,13 @@ class TestAskingTwiceDoesNotBuyTwoRuns:
         return next(fn for fn in events_of(demo)
                     if fn.show_progress == "minimal" and len(fn.outputs) == 10)
 
-    async def press_run(self, monkeypatch, started, view, request="go", inputs="{}"):
+    async def press_run(self, monkeypatch, started, view, request="go", inputs="{}",
+                        session="session-1"):
         keys = []
 
-        async def fake_start(sector, workflow_id, req, ins, uploads, idempotency_key=""):
-            keys.append(idempotency_key)
+        async def fake_start(sector, workflow_id, req, ins, uploads, idempotency_key="",
+                             caller=""):
+            keys.append((idempotency_key, caller))
             return started
 
         async def fake_stream(run_id, poll_seconds=0.4):
@@ -375,8 +378,9 @@ class TestAskingTwiceDoesNotBuyTwoRuns:
         monkeypatch.setattr(core, "stream_events", fake_stream)
         monkeypatch.setattr(core, "get_run", lambda run_id: _resolved(view))
         handler = self.run_handler(core.build_interface()).fn
+        browser = types.SimpleNamespace(session_hash=session, username=None)
         frames = [frame async for frame in
-                  handler("space", "space.probe", request, inputs, [])]
+                  handler("space", "space.probe", request, inputs, [], browser)]
         return keys[0], frames
 
     async def test_the_same_request_carries_the_same_key(self, ui_env, monkeypatch):
@@ -397,20 +401,33 @@ class TestAskingTwiceDoesNotBuyTwoRuns:
         other, _ = await self.press_run(monkeypatch, "run-2", view, inputs='{"a": 2}')
         assert first != other
 
+    async def test_another_browser_does_not_share_the_run(self, ui_env, monkeypatch):
+        """The same form from someone else's session is their request, not a replay."""
+        view = running_view([])
+        (key, mine), _ = await self.press_run(monkeypatch, "run-1", view, session="s-1")
+        (same_key, theirs), _ = await self.press_run(monkeypatch, "run-2", view, session="s-2")
+        assert key == same_key
+        assert mine != theirs
+
+    async def test_without_a_session_nothing_is_shared(self, ui_env, monkeypatch):
+        view = running_view([])
+        (key, caller), _ = await self.press_run(monkeypatch, "run-1", view, session=None)
+        assert key == "" and caller == ""
+
     async def test_a_replayed_run_says_so_instead_of_looking_instant(self, ui_env,
                                                                      monkeypatch):
         """A brief that appears at once should explain why, or a reader will fairly
         wonder whether the work happened at all."""
         view = running_view([{"kind": "done", "message": "m", "agent": "analyst",
                               "ts": "2026-01-01T09:30:00Z"}])
-        monkeypatch.setattr(core, "run_for_key", lambda key: "run-earlier")
+        monkeypatch.setattr(core, "run_for_key", lambda key, caller="": "run-earlier")
         _, frames = await self.press_run(monkeypatch, "run-earlier", view)
         assert "Replayed" in frames[-1][0]
         assert "09:30 UTC" in frames[-1][0]
 
     async def test_a_fresh_run_says_nothing_of_the_sort(self, ui_env, monkeypatch):
         view = running_view([])
-        monkeypatch.setattr(core, "run_for_key", lambda key: None)
+        monkeypatch.setattr(core, "run_for_key", lambda key, caller="": None)
         _, frames = await self.press_run(monkeypatch, "run-1", view)
         assert not any("Replayed" in frame[0] for frame in frames)
 
