@@ -124,8 +124,24 @@ class TestKeyRotation:
 class TestPasswordLogin:
     async def test_right_password_signs_in_as_that_user(self, project):
         fake, verifier = project
-        principal = await verifier.password_login("alice@example.com", "correct horse")
-        assert principal.user_id == fake.users["alice@example.com"]["id"]
+        login = await verifier.password_login("alice@example.com", "correct horse")
+        assert login.principal.user_id == fake.users["alice@example.com"]["id"]
+        assert login.refresh_token
+
+    async def test_a_refresh_token_works_once(self, project):
+        """Supabase rotates refresh tokens; a spent one must not sign anyone in."""
+        _, verifier = project
+        login = await verifier.password_login("alice@example.com", "correct horse")
+        renewed = await verifier.refresh(login.refresh_token)
+        assert renewed.principal.user_id == login.principal.user_id
+        assert await verifier.refresh(login.refresh_token) is None
+
+    def test_the_token_never_appears_in_a_dump_or_repr(self, project):
+        principal = core.Principal(user_id="u", method="supabase", access_token="tok-secret")
+        assert "tok-secret" not in repr(principal)
+        assert "tok-secret" not in principal.model_dump_json()
+        session = principal.durable_session()
+        assert "tok-secret" not in repr(session)
 
     async def test_wrong_password_signs_in_as_nobody(self, project):
         _, verifier = project
