@@ -5,12 +5,12 @@ colorFrom: indigo
 
 sdk: docker
 app_port: 7860
-pinned: false
+Demo:  https://automatron-413625269952.us-central1.run.app 
 license: mit
 short_description: Multi-agent decision support for space, quant, e-commerce and real estate
 ---
 
-# Automatron
+# Automatron 
 
 Multi-agent decision support for high-stakes workflows.
 
