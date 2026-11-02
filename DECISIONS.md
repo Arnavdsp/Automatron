@@ -513,3 +513,91 @@ LangGraph's own encrypted serializer reads an unencrypted blob as-is, for migrat
 Here that would let anyone able to write the checkpoint file plant state that is
 then believed, so unencrypted checkpoints are refused.
 
+
+## D47 — Accounts live in Supabase Auth, sessions in an encrypted cookie
+
+Anyone can create an account on `/login`. The service never sees a stored password:
+sign-up, sign-in, reset and sign-out are Supabase Auth calls, and the profile and
+sign-in history tables sit under forced row-level security, each person reading
+only their own rows. The profile is created by a trigger at signup, so no client
+can create one for someone else, and sign-in history can be inserted and read by
+its owner but never edited or erased.
+
+The browser holds one thing: a cookie sealed with AES-GCM, `HttpOnly`,
+`SameSite=Lax`, and `__Host-` prefixed behind HTTPS so a sibling subdomain cannot
+plant or overwrite it. Nothing about a session is kept on the server, so any
+instance serves any user and a restart signs nobody out. The access token inside
+is verified on every request rather than trusted because the cookie decrypted, and
+refreshed five minutes before it expires; whatever the refreshes, a session ends a
+week after sign-in. Signing out revokes the refresh tokens globally, so a copied
+cookie stops working too.
+
+Every failure reads the same whether or not the account exists, including sign-up
+with an address already registered, which Supabase itself answers with a look-alike
+user. Attempts are limited per address and per account, so neither one client nor
+many clients against one account can guess quickly. Auth posts must come from this
+origin and be JSON, which a cross-site form cannot send. The `/login` page carries a
+nonce-based Content-Security-Policy with no inline exceptions.
+
+The interface is served only to a signed-in browser: a visitor is redirected to
+`/login`, and Gradio's own API refuses requests without a session. The REST API
+keeps bearer tokens rather than accepting the cookie, so it has no cross-site
+request surface at all.
+
+## D48 — OpenTelemetry for traces, Prometheus for metrics, joined both ways
+
+A run spends minutes across nodes, steps, model attempts and tools; a metric can say
+it was slow, only a trace says where. Each run leg is its own trace, linked to the
+request that started it rather than parented by it, because a decision can arrive
+hours after the request that began the run. Model attempts are spans of their own,
+so a failover reads as the attempts it was, and the time spent waiting on a
+provider's rate limiter is recorded separately from the call: on a free tier it is
+often most of the latency, and it is ours to tune.
+
+The approval gate pauses a run by raising LangGraph's interrupt. Left alone, every
+run would show an error at the gate, so the interrupt is recorded as an attribute.
+
+Spans are exported only when an OTLP endpoint is configured; otherwise the SDK's
+default provider makes them no-ops. No request body, header or piece of run content
+is recorded, and a test checks that a confidential marker in the request appears in
+no span. Logs carry the trace and span id, and latency histograms carry exemplars,
+which only OpenMetrics can express, so `/metrics` serves OpenMetrics when the
+scraper asks for it.
+
+The bundled stack is the OpenTelemetry Collector, Tempo, Prometheus and Grafana. The
+collector derives per-node and per-provider duration metrics from the spans, so the
+app does not count the same thing twice. Prometheus runs with created-timestamp zero
+ingestion so `increase()` counts a fresh process's first events.
+
+## D49 — Pillow is installed over an upper bound nothing here needs
+
+Pillow 13.0.0 fixes 39 advisories, several of them memory-safety bugs reachable from
+`Image.open()` on a hostile file, and the e-commerce tools decode customers' photos.
+Gradio (through 6.31) and fastembed 0.8 declare `pillow<13`. Automatron uses no Gradio
+image component and fastembed only for text, and the full suite passes on 13.0.0, so
+`requirements-overrides.txt` installs it with `--no-deps` after the main install, in
+CI and in the image. The alternative, suppressing 39 advisories, would leave the bugs
+in place.
+
+Independently of the version, photos are opened as untrusted input: PNG, JPEG or WebP
+only, one frame, bounded dimensions. Pillow chooses a decoder from the bytes, so an
+attachment named `photo.png` cannot reach the TIFF, FlashPix or JPEG 2000 code.
+
+## D50 — A run started during seeding waits for the knowledge base
+
+Traces of the first runs after a restart showed knowledge searches finding no
+collection at all. Seeding runs in the background so a cold start answers quickly,
+and a run that arrived before it finished got a brief written without references,
+which looked like ordinary latency rather than the quality failure it was. A search
+now waits for seeding in progress, up to 90 seconds, and a seed that fails still
+releases it. Startup also imports the analysis libraries the tools would otherwise
+import in the first user's run.
+
+Two latency changes were measured and kept, and one was measured and dropped. A
+model reply's tool calls now run concurrently, recorded in the order asked. In the
+anomaly analysis trace, the two tools of one step took 4.1 s and 2.3 s and the step
+took 4.1 s rather than their sum, with identical output.
+Warming the query path with a search per sector saved about 10 ms and doubled the
+test suite's run time, so it was taken out. Shrinking the anomaly detector's forest,
+which dominates that step, would have been faster and was not done: it changes which
+intervals are flagged, and so the numbers in the brief.

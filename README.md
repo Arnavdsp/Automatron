@@ -261,6 +261,97 @@ Every decision is recorded in a hash-chained audit log that can be verified.
 
 ---
 
+## Accounts and data isolation
+
+Anyone can create an account. Each person sees only their own runs.
+
+```text
+/login ──> Supabase Auth ──> encrypted session cookie ──> interface
+                                                     │
+                                       every request verifies the token
+```
+
+- **Sign up, sign in, reset a password** on `/login`. Passwords go straight to
+  Supabase Auth and are never stored here. Email confirmation and reset links
+  finish on the same page.
+- **The browser holds one cookie**: encrypted, `HttpOnly`, `SameSite=Lax`, and
+  host-locked with the `__Host-` prefix behind HTTPS. Its token is verified on
+  every request and refreshed before it expires; a session ends a week after
+  sign-in, and signing out revokes it everywhere.
+- **No account discovery.** A wrong password and an unknown address get the same
+  answer, and so does signing up with an address that is already registered.
+  Attempts are limited per address and per account, auth posts must come from
+  this origin, and new passwords are checked before they are sent.
+- **A run belongs to whoever started it.** The owner comes from the verified
+  token, never from the request, and is checked on every route. Someone else's run
+  id behaves exactly like one that does not exist.
+- **The database enforces it too.** Profiles, sign-in history, runs and the audit
+  trail live in Supabase under forced row-level security. The service writes as
+  the signed-in user with the publishable key; it never holds a service-role key.
+- **Run content is encrypted before it is stored.** Each run has its own AES-256-GCM
+  key, wrapped by Cloud KMS or a key from Secret Manager, and every sealed value
+  is bound to its run, owner and field. The database refuses plaintext in those
+  columns, so a leaked backup shows sector, workflow and status, not what was asked
+  or concluded.
+
+The schema is in `supabase/migrations/`. `tests/integration/test_supabase_rls.py`
+applies it to a throwaway PostgreSQL and attacks it as each role.
+
+To turn accounts on, apply the migrations and set:
+
+```text
+SUPABASE_URL                 https://<project>.supabase.co
+SUPABASE_PUBLISHABLE_KEY     the project's publishable key (never the secret one)
+RUN_ENCRYPTION_KEYS          k1:<base64 32 bytes>, or RUN_KMS_KEY for Cloud KMS
+SESSION_SECRET               base64 32 bytes, the same on every instance
+APP_PASSWORD                 the operator credential for /ops and /metrics
+```
+
+---
+
+## Observability
+
+Traces, metrics and logs, joined by trace id.
+
+```mermaid
+flowchart LR
+    APP["Automatron"] -- OTLP traces --> COL["OpenTelemetry Collector"]
+    COL --> TEMPO["Tempo"]
+    COL -- span metrics --> PROM["Prometheus"]
+    APP -- /metrics --> PROM
+    PROM --> GRAF["Grafana"]
+    TEMPO --> GRAF
+```
+
+- **Traces (OpenTelemetry).** Each run leg is one trace, linked to the request that
+  started it: every graph node, every plan step, every model attempt with its
+  provider, model, outcome, token counts and time spent waiting on the rate
+  limiter, and every tool call. Pausing for the reviewer is not reported as an
+  error. Request bodies, headers and run content are never recorded.
+- **Metrics (Prometheus).** Runs, time to brief, provider calls by outcome and
+  latency, tokens, tool latency, online evaluation results, refused requests,
+  durable-store writes and HTTP latency by route template. Latency samples carry
+  exemplars, so a slow bucket in Grafana opens the trace of a run in it.
+- **Logs.** JSON lines with credentials and personal data redacted, each carrying
+  the trace and span id it was written under.
+- **Alerts.** Eleven Prometheus rules, from a brief carrying a number no tool
+  produced, to no provider answering, to repeated requests for someone else's runs.
+- **Dashboards.** A provisioned Grafana dashboard, and `/ops` in the app itself for
+  deployments with no Grafana.
+
+Run the stack locally:
+
+```bash
+APP_PASSWORD=... GRAFANA_ADMIN_PASSWORD=... docker compose -f observability/docker-compose.yml up -d
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 APP_PASSWORD=... python app.py
+# Grafana: http://localhost:3000   Prometheus: http://localhost:9090
+```
+
+Tracing is off unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set, and costs nothing when
+off. Any OTLP backend works, Google Cloud Trace included.
+
+---
+
 ## Cloud deployment
 
 Automatron is containerized and deployed to **Google Cloud Run**.
@@ -411,6 +502,12 @@ Automatron/
 │   ├── knowledge/
 │   └── samples/
 |
+├── observability/
+│   ├── docker-compose.yml
+│   ├── otel-collector.yaml
+│   ├── prometheus/
+│   └── grafana/
+|
 ├── notebooks/
 │   ├── automatron_core.ipynb
 │   ├── automatron_ecommerce.ipynb
@@ -420,6 +517,9 @@ Automatron/
 |
 ├── scripts/
 │   └── build_notebooks.py
+|
+├── supabase/
+│   └── migrations/
 |
 ├── tests/
 │   ├── eval/
@@ -467,6 +567,12 @@ Run evaluation scenarios:
 python tests/eval/run_eval.py
 ```
 
+Every live run is also scored as it reaches the approval gate, by the same
+deterministic checks the golden scenarios use: the brief validates, every number
+traces to a tool, every finding cites evidence, nothing claims a decision was
+taken, the call budget held, and on live providers the brief arrived within its
+target time. Scores appear on the run, on `/ops` and in Grafana.
+
 ---
 
 ## Limitations
@@ -501,6 +607,10 @@ Audit             Hash-chained
 Deployment        Cloud Run
 CI/CD             GitHub Actions
 Human approval    Required
+Accounts          Supabase Auth + RLS
+Run storage       Encrypted per run
+Tracing           OpenTelemetry
+Metrics           Prometheus + Grafana
 ```
 
 ---
@@ -509,14 +619,12 @@ Human approval    Required
 
 Areas I want to explore next:
 
-- Distributed execution
+- Distributed execution, with graph checkpoints shared across instances
 - Persistent distributed idempotency
-- More rigorous agent evaluation
-- Better observability and tracing
 - Cost-aware model routing
 - Retrieval evaluation
 - Stronger policy verification
-- Persistent audit storage
+- Organizations with shared runs, which the schema already models
 
 ---
 
