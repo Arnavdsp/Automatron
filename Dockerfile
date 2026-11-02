@@ -15,8 +15,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN useradd -m -u 1000 appuser
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-overrides.txt ./
+RUN pip install --no-cache-dir -r requirements.txt \
+ && pip install --no-cache-dir --no-deps -r requirements-overrides.txt
 
 COPY --chown=appuser:appuser . .
 

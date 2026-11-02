@@ -1,0 +1,9 @@
+# Installed after requirements.txt with --no-deps, over an upper bound a dependency
+# declares but does not need.
+#
+# pillow: 13.0.0 fixes 39 advisories, several of them memory-safety bugs reachable
+# from Image.open() on an untrusted file. gradio (through 6.31) and fastembed 0.8
+# still declare pillow<13. Automatron uses no Gradio image component and fastembed
+# only for text, and the full suite passes on 13.0.0. Drop this file once gradio's
+# bound allows 13 and requirements.txt can pin it directly.
+pillow==13.0.0

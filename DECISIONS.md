@@ -389,3 +389,215 @@ is ever passed to `nltk` as a filename.
 The suppression is pinned to that one advisory ID rather than to the package, so any
 other finding against `nltk` still fails the build. Revisit when a fixed release
 exists: drop the flag and let the audit confirm it.
+
+## D41 — A run id is an identifier, never a credential
+
+Every route that takes a run id checks that the authenticated caller owns the run,
+and a run owned by someone else fails with exactly the error a nonexistent run
+gives. A distinct "forbidden" would confirm that the id exists, which is itself a
+leak. The check runs in every mode rather than only with Supabase: without it there
+is simply one owner, so the code path that protects real tenants is the one every
+test and every local run exercises.
+
+The owner is declared in the graph's state schema. LangGraph keeps only declared
+keys, so an owner passed in the initial payload but not declared would be silently
+dropped from the checkpoint, and a run recovered after a restart would come back
+belonging to nobody. A test recovers a run and checks its owner for this reason.
+
+The audit entry records both the reviewer name that was typed and the principal the
+server authenticated. The name is what the reviewer chose to sign; the principal is
+who actually did.
+
+## D42 — Supabase tokens are verified locally
+
+Calling the auth server's user endpoint on every request would add a network round
+trip to each API call and make the auth server a dependency of every read. Tokens
+signed with an asymmetric key are verified against the project's published key set
+instead, cached for ten minutes. The algorithm is taken from the key, never from
+the token, which closes the confusion attack where a public key is used as an HMAC
+secret. An unknown key id refetches the set, but at most once every thirty seconds,
+so a stream of invented key ids cannot turn this service into an amplifier against
+the auth server.
+
+Shared-secret (HS256) tokens are checked with the auth server and the answer cached
+for a minute by a hash of the token. Verifying them locally would mean holding the
+project's JWT secret, which can mint a token for any user.
+
+The interface's login form signs in through the same password grant a Supabase
+client uses, and the token it returns is verified like any other before the session
+is accepted.
+
+## D43 — Metrics in-process, with a page of their own
+
+The service exports Prometheus metrics and also keeps the last hour of detail in
+memory, which the dashboard at `/ops` reads. On a free, single-instance deployment
+there is usually no Prometheus scraping it, and a dashboard that needs one would
+show nothing. Where one does scrape, it gets the long history, and the in-memory
+window costs a few hundred kilobytes.
+
+Route labels use the route template. A path label would put every run id into the
+label set and grow the metric without bound. The dashboard and `/metrics` sit behind
+the operator credential in every mode, since they span all tenants. A request with
+no credential is not counted as a security event: a browser always makes one before
+showing its Basic prompt, and counting it would fill the panel with page loads.
+
+## D44 — One evaluator, online and offline
+
+The golden suite's checks moved into the core module as `evaluate_run`, which now
+also scores every live run when it reaches the gate. The suite adds only each
+scenario's expectations. Keeping one implementation means a run on the dashboard
+and a run in the suite are judged identically, and a check tightened for one is
+tightened for both.
+
+Latency is judged only on live providers, where the scripted model's instant
+answers would make it meaningless. The checks stay deterministic. A model grading
+another model's brief would be one more unverified opinion in a system whose point
+is that every number comes from a tool.
+
+Scoring the offline model's runs concurrently shows them degraded, because the
+scripted model is one shared script, not because of the system under test. The
+suite runs its scenarios one at a time for that reason.
+
+## D45 — Run content is encrypted by the application, per run
+
+Row-level security decides who may read a row. It does nothing for a leaked backup,
+a database administrator, a misconfigured policy, or a support session with the
+database open. Encrypting at the application, before anything is stored, leaves
+those holding ciphertext.
+
+Each run has its own AES-256-GCM data key, wrapped by a key-encryption key that
+the database never sees: Cloud KMS when configured, otherwise a keyring from a
+secret manager. A key per run means one exposed key exposes one run, and
+destroying a run's wrapped key erases it without touching anything else. Every
+sealed value carries its run, owner and field as associated data. That is what
+stops a stored ciphertext being moved somewhere it would be shown to the wrong
+reader, even by someone with write access to the table.
+
+Cloud KMS is preferred over the keyring because its key material cannot be
+exported, every wrap and unwrap is audit-logged, and access is withdrawn by
+removing one IAM binding. Unwrapped run keys are cached in memory, bounded, so a
+run costs one KMS call to create and at most one per instance to read.
+
+The database enforces the format as well. Sealed columns accept only the sealed
+shape, and the request and its key cannot be updated, so a future bug cannot quietly
+start storing plaintext. What stays in the clear is what the policies and the
+dashboard need: sector, workflow, status, timestamps and the decision taken.
+
+## D46 — Durable writes are made as the user, and a run is recorded before it starts
+
+The service could hold a service-role key and write wherever it liked. It holds only
+the publishable key and writes with the signed-in user's own token, so the database
+enforces tenancy on every write the application makes. A bug in the application
+cannot put a run under someone else's organization, because the database will not
+let that user.
+
+The token is held in memory for as long as the run it started needs it, never
+stored or logged. The interface refreshes its session before expiry; the API uses
+whatever token arrives with each request. A write that fails at the gate is retried
+by the next request that touches the run, which carries a fresh token.
+
+The run's record is written before any work begins, and if that write fails the run
+does not start (503, and the idempotency key is released). A run that worked but
+could never be found again after a restart would cost the user the same quota and
+leave no trace.
+
+Checkpoints stay on local disk, encrypted, rather than moving to the database. They
+are written from the background mid-run, where no user token is guaranteed to be
+current, and holding a server credential to the database for them would undo the
+point of D46. The consequence: a run started on one instance can be read on any
+other from its durable record, but decided only where its checkpoint lives. Cloud
+Run session affinity keeps a reviewer on that instance in practice, and the other
+case is a clear 409.
+
+LangGraph's own encrypted serializer reads an unencrypted blob as-is, for migration.
+Here that would let anyone able to write the checkpoint file plant state that is
+then believed, so unencrypted checkpoints are refused.
+
+
+## D47 — Accounts live in Supabase Auth, sessions in an encrypted cookie
+
+Anyone can create an account on `/login`. The service never sees a stored password:
+sign-up, sign-in, reset and sign-out are Supabase Auth calls, and the profile and
+sign-in history tables sit under forced row-level security, each person reading
+only their own rows. The profile is created by a trigger at signup, so no client
+can create one for someone else, and sign-in history can be inserted and read by
+its owner but never edited or erased.
+
+The browser holds one thing: a cookie sealed with AES-GCM, `HttpOnly`,
+`SameSite=Lax`, and `__Host-` prefixed behind HTTPS so a sibling subdomain cannot
+plant or overwrite it. Nothing about a session is kept on the server, so any
+instance serves any user and a restart signs nobody out. The access token inside
+is verified on every request rather than trusted because the cookie decrypted, and
+refreshed five minutes before it expires; whatever the refreshes, a session ends a
+week after sign-in. Signing out revokes the refresh tokens globally, so a copied
+cookie stops working too.
+
+Every failure reads the same whether or not the account exists, including sign-up
+with an address already registered, which Supabase itself answers with a look-alike
+user. Attempts are limited per address and per account, so neither one client nor
+many clients against one account can guess quickly. Auth posts must come from this
+origin and be JSON, which a cross-site form cannot send. The `/login` page carries a
+nonce-based Content-Security-Policy with no inline exceptions.
+
+The interface is served only to a signed-in browser: a visitor is redirected to
+`/login`, and Gradio's own API refuses requests without a session. The REST API
+keeps bearer tokens rather than accepting the cookie, so it has no cross-site
+request surface at all.
+
+## D48 — OpenTelemetry for traces, Prometheus for metrics, joined both ways
+
+A run spends minutes across nodes, steps, model attempts and tools; a metric can say
+it was slow, only a trace says where. Each run leg is its own trace, linked to the
+request that started it rather than parented by it, because a decision can arrive
+hours after the request that began the run. Model attempts are spans of their own,
+so a failover reads as the attempts it was, and the time spent waiting on a
+provider's rate limiter is recorded separately from the call: on a free tier it is
+often most of the latency, and it is ours to tune.
+
+The approval gate pauses a run by raising LangGraph's interrupt. Left alone, every
+run would show an error at the gate, so the interrupt is recorded as an attribute.
+
+Spans are exported only when an OTLP endpoint is configured; otherwise the SDK's
+default provider makes them no-ops. No request body, header or piece of run content
+is recorded, and a test checks that a confidential marker in the request appears in
+no span. Logs carry the trace and span id, and latency histograms carry exemplars,
+which only OpenMetrics can express, so `/metrics` serves OpenMetrics when the
+scraper asks for it.
+
+The bundled stack is the OpenTelemetry Collector, Tempo, Prometheus and Grafana. The
+collector derives per-node and per-provider duration metrics from the spans, so the
+app does not count the same thing twice. Prometheus runs with created-timestamp zero
+ingestion so `increase()` counts a fresh process's first events.
+
+## D49 — Pillow is installed over an upper bound nothing here needs
+
+Pillow 13.0.0 fixes 39 advisories, several of them memory-safety bugs reachable from
+`Image.open()` on a hostile file, and the e-commerce tools decode customers' photos.
+Gradio (through 6.31) and fastembed 0.8 declare `pillow<13`. Automatron uses no Gradio
+image component and fastembed only for text, and the full suite passes on 13.0.0, so
+`requirements-overrides.txt` installs it with `--no-deps` after the main install, in
+CI and in the image. The alternative, suppressing 39 advisories, would leave the bugs
+in place.
+
+Independently of the version, photos are opened as untrusted input: PNG, JPEG or WebP
+only, one frame, bounded dimensions. Pillow chooses a decoder from the bytes, so an
+attachment named `photo.png` cannot reach the TIFF, FlashPix or JPEG 2000 code.
+
+## D50 — A run started during seeding waits for the knowledge base
+
+Traces of the first runs after a restart showed knowledge searches finding no
+collection at all. Seeding runs in the background so a cold start answers quickly,
+and a run that arrived before it finished got a brief written without references,
+which looked like ordinary latency rather than the quality failure it was. A search
+now waits for seeding in progress, up to 90 seconds, and a seed that fails still
+releases it. Startup also imports the analysis libraries the tools would otherwise
+import in the first user's run.
+
+Two latency changes were measured and kept, and one was measured and dropped. A
+model reply's tool calls now run concurrently, recorded in the order asked. In the
+anomaly analysis trace, the two tools of one step took 4.1 s and 2.3 s and the step
+took 4.1 s rather than their sum, with identical output.
+Warming the query path with a search per sector saved about 10 ms and doubled the
+test suite's run time, so it was taken out. Shrinking the anomaly detector's forest,
+which dominates that step, would have been faster and was not done: it changes which
+intervals are flagged, and so the numbers in the brief.

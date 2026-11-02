@@ -1,0 +1,91 @@
+groups:
+  - name: automatron
+    rules:
+      - alert: AutomatronDown
+        expr: up{job="automatron"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: Automatron is not answering its metrics scrape.
+
+      # The one that matters most: a brief reached a reviewer with a number no tool
+      # produced. The verifier should make this impossible; if it fires, it did not.
+      - alert: UngroundedNumberInBrief
+        expr: increase(automatron_eval_checks_total{check="grounding", result="fail"}[30m]) > 0
+        labels: {severity: critical}
+        annotations:
+          summary: A brief carried a number that no tool output contains.
+
+      - alert: EvaluationPassRateLow
+        expr: |
+          sum(rate(automatron_eval_checks_total{result="fail"}[30m]))
+            / sum(rate(automatron_eval_checks_total[30m])) > 0.2
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: More than a fifth of online evaluation checks are failing.
+
+      - alert: NoProviderAnswering
+        expr: |
+          sum(rate(automatron_provider_calls_total[15m])) > 0
+            and sum(rate(automatron_provider_calls_total{outcome="ok"}[15m])) == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: Model calls are being made and none is succeeding.
+
+      - alert: ProviderFailoverRateHigh
+        expr: |
+          sum(rate(automatron_provider_calls_total{outcome!="ok"}[10m]))
+            / sum(rate(automatron_provider_calls_total[10m])) > 0.3
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: Over 30% of model calls are failing over; a key may be dead or rate-limited.
+
+      - alert: TimeToBriefSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(automatron_run_time_to_brief_seconds_bucket[30m]))) > 180
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: 95th-percentile time to brief is above the 180 s target.
+
+      - alert: RunsFailing
+        expr: |
+          sum(rate(automatron_runs_settled_total{outcome="failed"}[30m]))
+            / sum(rate(automatron_runs_started_total[30m])) > 0.25
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: More than a quarter of runs are failing.
+
+      - alert: CrossTenantAccessAttempts
+        expr: increase(automatron_security_events_total{event="cross_tenant_read_blocked"}[10m]) > 5
+        labels: {severity: warning}
+        annotations:
+          summary: Repeated requests for runs belonging to someone else.
+
+      - alert: SignInAbuse
+        expr: |
+          increase(automatron_security_events_total{event=~"sign_in_failed|auth_rate_limited"}[10m]) > 50
+        labels: {severity: warning}
+        annotations:
+          summary: A burst of failed or rate-limited sign-ins; possible password guessing.
+
+      - alert: DurableStoreWritesFailing
+        expr: increase(automatron_store_writes_total{outcome!="ok"}[10m]) > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: Run records are not reaching the durable store; new runs are being refused.
+
+      - alert: ServerErrors
+        expr: |
+          sum(rate(automatron_http_requests_total{status=~"5.."}[5m]))
+            / sum(rate(automatron_http_requests_total[5m])) > 0.05
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: More than 5% of requests are failing with a server error.
