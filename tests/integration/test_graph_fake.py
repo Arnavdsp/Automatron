@@ -396,10 +396,51 @@ class TestIdempotentStarts:
         )
         assert a == b, "two racing retries each started a run"
 
+    async def test_one_callers_key_cannot_reach_another_callers_run(self, graph_env):
+        """Keys come from clients. Knowing someone else's key must not return their brief."""
+        mine = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                    _DEFAULT_INPUTS, idempotency_key="k-6", caller="alice")
+        theirs = await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                      _DEFAULT_INPUTS, idempotency_key="k-6", caller="bob")
+        assert mine != theirs
+        assert core.run_for_key("k-6", "bob") == theirs
+
+    async def test_a_key_reused_for_a_different_request_is_refused(self, graph_env):
+        """Replaying it would answer a request nobody just made."""
+        await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                             _DEFAULT_INPUTS, idempotency_key="k-7", caller="alice")
+        with pytest.raises(core.IdempotencyConflict):
+            await core.start_run("space", testsector.WORKFLOW_ID, "Assess probe-2.",
+                                 _DEFAULT_INPUTS, idempotency_key="k-7", caller="alice")
+        assert len(core._RUNS) == 1
+
     async def test_the_key_map_does_not_grow_without_bound(self, graph_env):
         for n in range(core.MAX_IDEMPOTENCY_KEYS + 20):
             core.remember_key(f"key-{n}", f"run-{n}")
         assert len(core._IDEMPOTENT) <= core.MAX_IDEMPOTENCY_KEYS
+
+
+class TestRequestFingerprint:
+    def fingerprint(self, *uploads):
+        return core.request_fingerprint("space", testsector.WORKFLOW_ID, "Assess probe-1.",
+                                        _DEFAULT_INPUTS, list(uploads))
+
+    def upload(self, folder, name, payload):
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / name
+        path.write_bytes(payload)
+        return {"file_id": folder.name, "name": name, "path": str(path)}
+
+    def test_a_file_with_the_same_name_and_size_but_other_bytes_differs(self, tmp_path):
+        first = self.upload(tmp_path / "a", "report.txt", b"approve")
+        second = self.upload(tmp_path / "b", "report.txt", b"decline")
+        assert self.fingerprint(first) != self.fingerprint(second)
+
+    def test_the_same_file_staged_twice_matches(self, tmp_path):
+        """Each upload is staged under a fresh folder; where it landed is not the request."""
+        first = self.upload(tmp_path / "a", "report.txt", b"approve")
+        second = self.upload(tmp_path / "b", "report.txt", b"approve")
+        assert self.fingerprint(first) == self.fingerprint(second)
 
 
 class TestAStandardRequestIsNotPlannedTwice:
