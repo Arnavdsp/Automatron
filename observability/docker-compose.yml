@@ -1,0 +1,80 @@
+# Local observability stack: OpenTelemetry Collector, Tempo, Prometheus, Grafana.
+#
+#   APP_PASSWORD=... GRAFANA_ADMIN_PASSWORD=... docker compose -f observability/docker-compose.yml up -d
+#
+# Point the app at the collector with OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+# and open Grafana on http://localhost:3000. Prometheus scrapes the app's /metrics on
+# the host on port 7860 (prometheus/prometheus.yml has the target).
+
+name: automatron-observability
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.164.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP, what the app uses
+    depends_on: [tempo]
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.10.10
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      # Exemplars link a latency sample to the trace that produced it. Zero ingestion
+      # at a counter's creation lets increase() count a process's first events.
+      - --enable-feature=exemplar-storage,created-timestamp-zero-ingestion
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    secrets:
+      - metrics_password
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.3.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/automatron-overview.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    secrets:
+      - grafana_admin_password
+    ports:
+      - "3000:3000"
+    depends_on: [prometheus, tempo]
+    restart: unless-stopped
+
+secrets:
+  # The app's operator password, which /metrics sits behind.
+  metrics_password:
+    environment: APP_PASSWORD
+  grafana_admin_password:
+    environment: GRAFANA_ADMIN_PASSWORD
+
+volumes:
+  tempo-data:
+  prometheus-data:
+  grafana-data:
