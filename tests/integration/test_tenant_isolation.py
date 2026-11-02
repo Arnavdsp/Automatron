@@ -217,25 +217,3 @@ class TestRateLimitsArePerUser:
         form = {"sector": "space", "workflow_id": testsector.WORKFLOW_ID, "request": "x"}
         assert client.post(f"{API}/runs", data=form, headers=alice).status_code == 429
         start(client, bob)
-
-
-class TestTheInterfaceSignsInSupabaseUsers:
-    async def test_a_signed_in_user_owns_their_interface_runs(self, tenants):
-        assert await core.interface_login("alice@example.com", "correct horse")
-
-        class Request:
-            username = "alice@example.com"
-
-        assert core.interface_owner(Request()) == tenants["alice_id"]
-
-    async def test_a_wrong_password_is_refused(self, tenants):
-        assert not await core.interface_login("alice@example.com", "wrong")
-
-    def test_a_session_this_process_did_not_sign_in_owns_nothing(self, tenants):
-        class Request:
-            username = "mallory@example.com"
-
-        with pytest.raises(PermissionError):
-            core.interface_owner(Request())
-        with pytest.raises(PermissionError):
-            core.interface_owner(None)

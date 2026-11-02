@@ -328,3 +328,89 @@ class TestOnlyCiphertextIsStored:
                        f"('{people['alice_run']}', '{people['alice_org']}', "
                        "'{\"action\": \"approve\", \"notes\": \"in the clear\"}', "
                        f"'{HASH}', '{HASH}');")
+
+
+ADDRESS = "b" * 64
+
+
+class TestProfiles:
+    def test_signup_creates_a_profile_from_the_name_given(self, db, people):
+        user = db.psql("insert into auth.users (email, raw_user_meta_data) values "
+                       "('dana@example.com', '{\"display_name\": \"Dana <script>\"}') "
+                       "returning id;").stdout.strip()
+        assert db.as_user(user, "select display_name from public.profiles;") == "Dana script"
+
+    def test_each_person_sees_only_their_own(self, db, people):
+        assert db.as_user(people["alice"], "select count(*) from public.profiles;") == "1"
+        assert db.as_user(people["alice"], "select count(*) from public.profiles "
+                          f"where id = '{people['bob']}';") == "0"
+
+    def test_a_person_can_rename_themselves_but_nobody_else(self, db, people):
+        db.as_user(people["alice"], "update public.profiles set display_name = 'Al' "
+                   f"where id = '{people['alice']}';")
+        db.as_user(people["alice"], "update public.profiles set display_name = 'Hacked' "
+                   f"where id = '{people['bob']}';")
+        assert db.as_user(people["alice"], "select display_name from public.profiles;") == "Al"
+        assert db.as_user(people["bob"], "select display_name from public.profiles;") == ""
+
+    def test_a_profile_cannot_be_created_or_moved_by_hand(self, db, people):
+        with pytest.raises(PermissionError, match="permission denied"):
+            db.as_user(people["alice"], "insert into public.profiles (id, display_name) "
+                       f"values ('{people['bob']}', 'x');")
+        with pytest.raises(PermissionError, match="permission denied"):
+            db.as_user(people["alice"], "update public.profiles set id = "
+                       f"'{people['bob']}' where id = '{people['alice']}';")
+
+    def test_markup_cannot_be_written_into_a_name(self, db, people):
+        with pytest.raises(PermissionError, match="check constraint"):
+            db.as_user(people["alice"], "update public.profiles set display_name = "
+                       f"'<img src=x>' where id = '{people['alice']}';")
+
+    def test_the_anonymous_role_reads_no_profiles(self, db, people):
+        with pytest.raises(PermissionError, match="permission denied"):
+            db.as_user(None, "select count(*) from public.profiles;", role="anon")
+
+
+class TestSignInHistory:
+    def record(self, db, who, user_id=None, method="password"):
+        db.as_user(who, "insert into public.sign_in_events (user_id, method, user_agent, "
+                   f"address_hash) values ('{user_id or who}', '{method}', 'Firefox', "
+                   f"'{ADDRESS}');")
+
+    def test_a_person_records_and_reads_their_own_sign_ins(self, db, people):
+        self.record(db, people["carol"])
+        assert db.as_user(people["carol"], "select count(*) from public.sign_in_events;") == "1"
+        assert db.as_user(people["bob"], "select count(*) from public.sign_in_events "
+                          f"where user_id = '{people['carol']}';") == "0"
+
+    def test_nobody_can_record_a_sign_in_for_someone_else(self, db, people):
+        with pytest.raises(PermissionError, match="row-level security"):
+            self.record(db, people["bob"], user_id=people["carol"])
+
+    def test_history_cannot_be_edited_or_erased(self, db, people):
+        self.record(db, people["alice"])
+        for statement in ("update public.sign_in_events set user_agent = 'x';",
+                          "delete from public.sign_in_events;"):
+            with pytest.raises(PermissionError, match="permission denied"):
+                db.as_user(people["alice"], statement)
+
+    def test_a_raw_address_is_refused(self, db, people):
+        with pytest.raises(PermissionError, match="check constraint"):
+            db.as_user(people["alice"], "insert into public.sign_in_events (method, "
+                       "address_hash) values ('password', '203.0.113.7');")
+
+    def test_an_unknown_method_is_refused(self, db, people):
+        with pytest.raises(PermissionError, match="check constraint"):
+            self.record(db, people["alice"], method="magic")
+
+    def test_deleting_an_account_takes_its_history_and_profile_with_it(self, db, people):
+        user = db.psql("insert into auth.users (email) values ('erin@example.com') "
+                       "returning id;").stdout.strip()
+        self.record(db, user)
+        # Erin has no runs, so nothing the audit trail keeps refers to her.
+        db.psql("delete from public.organization_members where user_id = "
+                f"'{user}'; delete from auth.users where id = '{user}';")
+        assert db.psql(f"select count(*) from public.sign_in_events where user_id = '{user}';"
+                       ).stdout.strip() == "0"
+        assert db.psql(f"select count(*) from public.profiles where id = '{user}';"
+                       ).stdout.strip() == "0"

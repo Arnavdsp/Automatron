@@ -37,13 +37,28 @@ class FakeSupabase:
         self.audit: list[dict] = []
         self.refresh_tokens: dict[str, str] = {}
         self.writes_fail = False
+        self.profiles: dict[str, dict] = {}
+        self.sign_ins: list[dict] = []
+        self.confirm_email = False
+        self.recovery_requests: list[str] = []
+        self.logouts: list[str] = []
+        self.password_changes: list[str] = []
 
-    def add_user(self, email: str, password: str = "correct horse") -> str:
+    def add_user(self, email: str, password: str = "correct horse",
+                 display_name: str = "") -> str:
         user_id = str(uuid.uuid4())
         self.users[email] = {"id": user_id, "password": password}
-        # What the signup trigger does: a personal organization the user owns.
+        # What the signup trigger does: a personal organization the user owns, and
+        # a profile.
         self.organizations[user_id] = str(uuid.uuid4())
+        self.profiles[user_id] = {"id": user_id, "display_name": display_name or
+                                  email.split("@")[0]}
         return user_id
+
+    def session_for(self, email: str) -> dict:
+        refresh = uuid.uuid4().hex
+        self.refresh_tokens[refresh] = email
+        return {"access_token": self.token(email), "refresh_token": refresh}
 
     def jwks(self) -> dict:
         public = json.loads(jwt.algorithms.ECAlgorithm.to_jwk(self.key.public_key()))
@@ -86,6 +101,36 @@ class FakeSupabase:
             self.refresh_tokens[refresh] = email
             return httpx.Response(200, json={"access_token": self.token(email),
                                              "refresh_token": refresh})
+        if path == "/auth/v1/signup":
+            body = json.loads(request.content or b"{}")
+            if body["password"] in ("password123!", "qwertyuiop1"):
+                return httpx.Response(422, json={"error_code": "weak_password"})
+            if body["email"] in self.users:
+                # Supabase answers a repeat sign-up with a look-alike user and no
+                # session, so the response does not reveal the account exists.
+                return httpx.Response(200, json={"id": str(uuid.uuid4())})
+            self.add_user(body["email"], body["password"],
+                          (body.get("data") or {}).get("display_name", ""))
+            if self.confirm_email:
+                return httpx.Response(200, json={"id": self.users[body["email"]]["id"]})
+            return httpx.Response(200, json=self.session_for(body["email"]))
+        if path == "/auth/v1/recover":
+            self.recovery_requests.append(json.loads(request.content)["email"])
+            return httpx.Response(200, json={})
+        if path == "/auth/v1/logout":
+            user = self.caller(request)
+            email = next((e for e, u in self.users.items() if u["id"] == user), None)
+            self.refresh_tokens = {k: v for k, v in self.refresh_tokens.items() if v != email}
+            self.logouts.append(user)
+            return httpx.Response(204)
+        if path == "/auth/v1/user" and request.method == "PUT":
+            user = self.caller(request)
+            if user is None:
+                return httpx.Response(401, json={"msg": "invalid JWT"})
+            email = next(e for e, u in self.users.items() if u["id"] == user)
+            self.users[email]["password"] = json.loads(request.content)["password"]
+            self.password_changes.append(user)
+            return httpx.Response(200, json={"id": user})
         if path == "/auth/v1/user":
             self.user_requests += 1
             return httpx.Response(401, json={"msg": "invalid JWT"})
@@ -156,6 +201,16 @@ class FakeSupabase:
                 rows = [r for r in rows if r["created_by"] == self.eq(request, "created_by")]
             rows = sorted(rows, key=lambda r: r["created_at"], reverse=True)
             return httpx.Response(200, json=rows[: int(request.url.params.get("limit", 1000))])
+        if table == "profiles" and request.method == "GET":
+            asked = self.eq(request, "id")
+            row = self.profiles.get(user) if asked == user else None
+            return httpx.Response(200, json=[row] if row else [])
+        if table == "sign_in_events" and request.method == "POST":
+            row = json.loads(request.content)
+            if row["user_id"] != user:
+                return refused
+            self.sign_ins.append(row)
+            return httpx.Response(201)
         if table == "audit_entries" and request.method == "POST":
             row = json.loads(request.content)
             if row["actor"] != user or row["organization_id"] != self.organizations.get(user):
